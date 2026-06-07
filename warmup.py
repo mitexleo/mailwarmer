@@ -165,10 +165,14 @@ def gui_main():
         def run(self):
             logger = logging.getLogger("warmup.worker")
             logger.setLevel(logging.INFO)
-            handler = QtLogHandler(LogSignal())
-            handler.signal.message.connect(self._log)
-            handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-            logger.addHandler(handler)
+            gui_handler = QtLogHandler(LogSignal())
+            gui_handler.signal.message.connect(self._log)
+            gui_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+            logger.addHandler(gui_handler)
+
+            file_handler = logging.FileHandler("warmup.log")
+            file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+            logger.addHandler(file_handler)
 
             def progress_cb(cur, total):
                 self._progress(cur, total)
