@@ -3,18 +3,21 @@
 A desktop GUI (Qt) tool for SMTP warm-up — gradually sends emails to a list of
 recipients over multiple days to build sender reputation.
 
-![screenshot](https://via.placeholder.com/720x540/0a0a4a/ffffff?text=Mail+Warmer+GUI)
+**Author:** Mueenul Islam — [hello@mueen.dev](mailto:hello@mueen.dev) — [https://mueen.dev](https://mueen.dev)
 
 ## Features
 
 - **Qt GUI** — configure everything visually, no CLI needed
-- **SMTP config** — host, port, user, pass, TLS toggle
-- **File pickers** — select your data (`.xlsx`/`.csv`), email HTML, and `.env` config
+- **SMTP config** — host, port, user, pass, TLS toggle — enter directly in the app
+- **Save/Load Config** — persist SMTP settings between sessions
+- **Email body editor** — write or paste HTML directly, or load from a file
+- **Recipients file** — browse for `.xlsx` or `.csv`
 - **Auto-generated schedule** — distributes recipients across N days with gradual ramp-up
 - **Single day or auto mode** — run one day or chain all days automatically
+- **Pause/Resume** — state is saved after every email; close and resume later
 - **Live log & progress bar** — see sends in real time
-- **Resumable** — tracks progress in a JSON state file, safe to restart
 - **Self-update check** — notifies when a new release is available
+- **Help guide** — built-in usage documentation
 - **CLI fallback** — still works headless with `--cli` flag
 
 ## Quick Start
@@ -23,7 +26,7 @@ recipients over multiple days to build sender reputation.
 pip install PySide6 openpyxl python-dotenv
 
 cp .env.example .env
-# Edit .env with your SMTP credentials
+# Edit .env with your SMTP credentials (or enter them directly in the GUI)
 
 python3 warmup.py
 ```
@@ -52,9 +55,24 @@ python3 warmup.py --cli -c .env -d recipients.csv -e body.html --auto
 | `DELAY_BETWEEN_DAYS` | No | 86400 | Seconds between days in auto mode |
 | `STATE_FILE` | No | warmup_state.json | State tracking file |
 
-## Data File
+## Data File Format
 
-The recipients file (`.xlsx` or `.csv`) should have one email address per row in the first column.
+The recipients file (`.xlsx` or `.csv`) should have one email address per row in
+the first column. A header row is allowed but not required.
+
+```
+email@example.com
+user2@domain.com
+user3@domain.com
+```
+
+Or with a header:
+
+```
+Email
+email@example.com
+user2@domain.com
+```
 
 ## Build from Source
 
@@ -77,3 +95,19 @@ sudo rpm -i warmup_*.rpm
 ```
 
 Installed to `/usr/local/bin/warmup`.
+
+## AI Usage Disclosure
+
+This project was developed with assistance from AI coding agents (Claude/DeepSeek)
+for code generation, refactoring, and debugging. Specific AI-generated contributions
+include:
+
+- Initial CLI implementation and subsequent Qt GUI refactor
+- SMTP warm-up scheduling algorithm
+- GitHub Actions CI/CD pipeline for cross-platform packaging
+- Self-update check functionality
+- Help system and documentation
+
+All AI-generated code was reviewed, tested, and validated by the author before
+inclusion. The author takes full responsibility for the project's functionality
+and security.
