@@ -1,40 +1,38 @@
 # Mail Warmer
 
-A generic SMTP warm-up CLI tool. Gradually sends emails to a list of recipients
-over multiple days to build sender reputation.
+A desktop GUI (Qt) tool for SMTP warm-up — gradually sends emails to a list of
+recipients over multiple days to build sender reputation.
+
+![screenshot](https://via.placeholder.com/720x540/0a0a4a/ffffff?text=Mail+Warmer+GUI)
+
+## Features
+
+- **Qt GUI** — configure everything visually, no CLI needed
+- **SMTP config** — host, port, user, pass, TLS toggle
+- **File pickers** — select your data (`.xlsx`/`.csv`), email HTML, and `.env` config
+- **Auto-generated schedule** — distributes recipients across N days with gradual ramp-up
+- **Single day or auto mode** — run one day or chain all days automatically
+- **Live log & progress bar** — see sends in real time
+- **Resumable** — tracks progress in a JSON state file, safe to restart
+- **Self-update check** — notifies when a new release is available
+- **CLI fallback** — still works headless with `--cli` flag
 
 ## Quick Start
 
 ```bash
-# Install dependencies (for running via Python directly)
-pip install openpyxl python-dotenv
+pip install PySide6 openpyxl python-dotenv
 
-# Create config from the example
 cp .env.example .env
-# Edit .env with your SMTP credentials, sender info, and subject
+# Edit .env with your SMTP credentials
 
-# Run day 1
-python3 warmup.py -c .env -d recipients.xlsx -e body.html --day 1
-
-# Or auto-run all days
-python3 warmup.py -c .env -d recipients.csv -e body.html --auto
+python3 warmup.py
 ```
 
 ## CLI Usage
 
-```
-usage: warmup [-h] [-c CONFIG] -d DATA -e EMAIL [-s STATE] --day DAY | --auto
-
-SMTP warm-up — gradually send emails to build sender reputation.
-
-arguments:
-  -c, --config CONFIG   Path to .env config file (default: ./.env)
-  -d, --data DATA       Path to .xlsx or .csv file with recipient emails
-  -e, --email EMAIL     Path to HTML email body file
-  -s, --state STATE     Path to state JSON file (overrides STATE_FILE in config)
-
-  --day DAY             Run a specific day number
-  --auto                Run all days automatically with delays between them
+```bash
+python3 warmup.py --cli -c .env -d recipients.xlsx -e body.html --day 1
+python3 warmup.py --cli -c .env -d recipients.csv -e body.html --auto
 ```
 
 ## Configuration (.env)
@@ -56,21 +54,19 @@ arguments:
 
 ## Data File
 
-The `-d` flag accepts **.xlsx** or **.csv** files. The first column should contain
-the recipient email addresses.
+The recipients file (`.xlsx` or `.csv`) should have one email address per row in the first column.
 
 ## Build from Source
 
 ```bash
-pip install pyinstaller openpyxl python-dotenv
-pyinstaller --onefile --name warmup warmup.py
-./dist/warmup --help
+pip install pyinstaller PySide6 openpyxl python-dotenv
+pyinstaller --onefile --name warmup warmup.py warmup_core.py
+./dist/warmup
 ```
 
 ## Install from Packages
 
-Download the `.deb` (Debian/Ubuntu) or `.rpm` (RHEL/Fedora/CentOS) package from
-the [Releases](https://github.com/mitexleo/mailwarmer/releases) page.
+Download `.deb` or `.rpm` from the [Releases page](https://github.com/mitexleo/mailwarmer/releases).
 
 ```bash
 # Debian / Ubuntu
@@ -80,4 +76,4 @@ sudo dpkg -i warmup_*.deb
 sudo rpm -i warmup_*.rpm
 ```
 
-The binary will be installed at `/usr/local/bin/warmup`.
+Installed to `/usr/local/bin/warmup`.
