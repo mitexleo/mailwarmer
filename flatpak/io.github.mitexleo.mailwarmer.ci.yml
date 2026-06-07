@@ -10,11 +10,6 @@ finish-args:
   - --socket=wayland
   - --device=dri
 
-cleanup:
-  - /include
-  - /lib/pkgconfig
-  - /share/man
-
 modules:
   - name: warmup
     buildsystem: simple
