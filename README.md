@@ -3,8 +3,6 @@
 A desktop GUI (Qt) tool for SMTP warm-up — gradually sends emails to a list of
 recipients over multiple days to build sender reputation.
 
-**Author:** Mueenul Islam — [hello@mueen.dev](mailto:hello@mueen.dev) — [https://mueen.dev](https://mueen.dev)
-
 ## Features
 
 - **Qt GUI** — configure everything visually, no CLI needed
