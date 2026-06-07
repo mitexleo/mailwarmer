@@ -270,65 +270,98 @@ def gui_main():
             central = QWidget()
             self.setCentralWidget(central)
             layout = QVBoxLayout(central)
-            layout.setSpacing(10)
+            layout.setSpacing(12)
+            layout.setContentsMargins(16, 12, 16, 12)
 
-            # ─ SMTP ─
+            # ─ SMTP ───────────────────────────────────────────────────────
             smtp_group = QGroupBox("SMTP Configuration")
-            smtp_form = QFormLayout(smtp_group)
+            smtp_grid = QGridLayout(smtp_group)
+            smtp_grid.setSpacing(8)
+            smtp_grid.setContentsMargins(12, 16, 12, 12)
+
+            smtp_grid.addWidget(QLabel("Host:"), 0, 0)
             self.smtp_host = QLineEdit()
-            smtp_form.addRow("Host:", self.smtp_host)
+            self.smtp_host.setPlaceholderText("smtp.example.com")
+            smtp_grid.addWidget(self.smtp_host, 0, 1)
+            smtp_grid.addWidget(QLabel("Port:"), 0, 2)
             self.smtp_port = QSpinBox()
-            self.smtp_port.setRange(1, 65535); self.smtp_port.setValue(25)
-            smtp_form.addRow("Port:", self.smtp_port)
+            self.smtp_port.setRange(1, 65535)
+            self.smtp_port.setValue(25)
+            self.smtp_port.setFixedWidth(80)
+            smtp_grid.addWidget(self.smtp_port, 0, 3)
+
+            smtp_grid.addWidget(QLabel("Username:"), 1, 0)
             self.smtp_user = QLineEdit()
-            smtp_form.addRow("User:", self.smtp_user)
+            self.smtp_user.setPlaceholderText("user@example.com")
+            smtp_grid.addWidget(self.smtp_user, 1, 1, 1, 3)
+
+            smtp_grid.addWidget(QLabel("Password:"), 2, 0)
             self.smtp_pass = QLineEdit()
             self.smtp_pass.setEchoMode(QLineEdit.Password)
-            smtp_form.addRow("Pass:", self.smtp_pass)
+            self.smtp_pass.setPlaceholderText("Enter SMTP password")
+            smtp_grid.addWidget(self.smtp_pass, 2, 1, 1, 2)
             self.use_tls = QCheckBox("Enable STARTTLS")
-            smtp_form.addRow("", self.use_tls)
-            # Add spacing around groups
-            smtp_group.setStyleSheet("QGroupBox{padding-top:12px;margin-top:4px}")
+            smtp_grid.addWidget(self.use_tls, 2, 3, Qt.AlignCenter)
+
+            smtp_grid.setColumnStretch(1, 1)
             layout.addWidget(smtp_group)
 
-            # ─ Sender ─
+            # ─ Sender & Email ─────────────────────────────────────────────
             sender_group = QGroupBox("Sender & Email")
-            sender_form = QFormLayout(sender_group)
-            self.from_name = QLineEdit()
-            sender_form.addRow("From name:", self.from_name)
-            self.from_email = QLineEdit()
-            sender_form.addRow("From email:", self.from_email)
-            self.email_subject = QLineEdit()
-            sender_form.addRow("Subject:", self.email_subject)
+            sender_grid = QGridLayout(sender_group)
+            sender_grid.setSpacing(8)
+            sender_grid.setContentsMargins(12, 16, 12, 12)
 
-            # Save / Load config buttons
-            btn_row = QHBoxLayout()
-            btn_save = QPushButton("Save Config")
+            sender_grid.addWidget(QLabel("From Name:"), 0, 0)
+            self.from_name = QLineEdit()
+            self.from_name.setPlaceholderText("Your Company")
+            sender_grid.addWidget(self.from_name, 0, 1, 1, 3)
+
+            sender_grid.addWidget(QLabel("From Email:"), 1, 0)
+            self.from_email = QLineEdit()
+            self.from_email.setPlaceholderText("info@example.com")
+            sender_grid.addWidget(self.from_email, 1, 1, 1, 3)
+
+            sender_grid.addWidget(QLabel("Subject:"), 2, 0)
+            self.email_subject = QLineEdit()
+            self.email_subject.setPlaceholderText("Email subject line")
+            sender_grid.addWidget(self.email_subject, 2, 1, 1, 3)
+
+            # Config buttons row
+            btn_widget = QWidget()
+            btn_lo = QHBoxLayout(btn_widget)
+            btn_lo.setContentsMargins(0, 4, 0, 0)
+            btn_save = QPushButton("💾 Save Config")
             btn_save.clicked.connect(self._save_config)
-            btn_load_env = QPushButton("Load from .env")
+            btn_load_env = QPushButton("📂 Load from .env")
             btn_load_env.clicked.connect(self._load_config_into_ui)
-            btn_row.addWidget(btn_save)
-            btn_row.addWidget(btn_load_env)
-            btn_row.addStretch()
-            sender_form.addRow("", btn_row)
+            btn_lo.addWidget(btn_save)
+            btn_lo.addWidget(btn_load_env)
+            btn_lo.addStretch()
+            sender_grid.addWidget(btn_widget, 3, 0, 1, 4)
+
+            sender_grid.setColumnStretch(1, 1)
             layout.addWidget(sender_group)
 
-            # ─ Files ─
-            files_group = QGroupBox("Recipients")
-            files_form = QFormLayout(files_group)
+            # ─ Recipients & Email Body ─────────────────────────────────────
+            data_body_group = QGroupBox("Recipients & Email Body")
+            data_body_layout = QVBoxLayout(data_body_group)
+            data_body_layout.setSpacing(8)
+            data_body_layout.setContentsMargins(12, 16, 12, 12)
+
+            # Recipients file row
             data_row = QHBoxLayout()
+            data_row.addWidget(QLabel("Recipients:"))
             self.data_path = QLineEdit()
-            self.data_path.setPlaceholderText("Path to .xlsx or .csv …")
-            data_row.addWidget(self.data_path)
+            self.data_path.setPlaceholderText("Path to .xlsx or .csv file with email addresses…")
+            data_row.addWidget(self.data_path, stretch=1)
             btn_data = QPushButton("Browse…")
+            btn_data.setFixedWidth(100)
             btn_data.clicked.connect(lambda: self._browse(self.data_path, "Data files (*.xlsx *.csv)"))
             data_row.addWidget(btn_data)
-            files_form.addRow("File:", data_row)
-            layout.addWidget(files_group)
+            data_body_layout.addLayout(data_row)
 
-            # ─ Email Body (tab: File | Editor) ─
-            body_group = QGroupBox("Email Body")
-            body_layout = QVBoxLayout(body_group)
+            # Email Body tabs
             body_tabs = QTabWidget()
             self.body_tabs = body_tabs
 
@@ -336,92 +369,141 @@ def gui_main():
             file_tab = QWidget()
             file_lo = QHBoxLayout(file_tab)
             self.html_path = QLineEdit()
-            self.html_path.setPlaceholderText("Path to .html file …")
-            file_lo.addWidget(self.html_path)
+            self.html_path.setPlaceholderText("Path to .html file…")
+            file_lo.addWidget(self.html_path, stretch=1)
             btn_html = QPushButton("Browse…")
+            btn_html.setFixedWidth(100)
             btn_html.clicked.connect(lambda: self._browse(self.html_path, "HTML files (*.html *.htm)"))
             file_lo.addWidget(btn_html)
             btn_load_body = QPushButton("Load into Editor")
             btn_load_body.clicked.connect(self._load_html_file_to_editor)
             file_lo.addWidget(btn_load_body)
-            body_tabs.addTab(file_tab, "File")
+            body_tabs.addTab(file_tab, "📁 File")
 
             # Editor tab
             editor_tab = QWidget()
             editor_lo = QVBoxLayout(editor_tab)
+            editor_lo.setContentsMargins(0, 0, 0, 0)
             self.html_editor = QPlainTextEdit()
             self.html_editor.setPlaceholderText(
                 "Paste or write your HTML email here…\n\n"
                 "<!DOCTYPE html>\n<html>\n<body>\n  <h1>Hello!</h1>\n</body>\n</html>"
             )
-            self.html_editor.setStyleSheet("font-family: monospace; font-size: 11px;")
+            self.html_editor.setStyleSheet(
+                "QPlainTextEdit { font-family: 'Consolas', 'Monaco', monospace; "
+                "font-size: 12px; background: #fafafa; }"
+            )
             editor_lo.addWidget(self.html_editor)
-            body_tabs.addTab(editor_tab, "Editor")
+            body_tabs.addTab(editor_tab, "✏️ Editor")
 
             body_tabs.currentChanged.connect(self._on_body_tab_changed)
-            body_layout.addWidget(body_tabs)
-            layout.addWidget(body_group)
+            body_tabs.setMinimumHeight(140)
+            data_body_layout.addWidget(body_tabs)
+            layout.addWidget(data_body_group)
 
-            # ─ Schedule & Controls ─
+            # ─ Schedule ────────────────────────────────────────────────────
             sched_group = QGroupBox("Schedule & Controls")
-            sched_layout = QVBoxLayout(sched_group)
+            sched_grid = QGridLayout(sched_group)
+            sched_grid.setSpacing(8)
+            sched_grid.setContentsMargins(12, 16, 12, 12)
 
-            top_row = QHBoxLayout()
-            top_row.addWidget(QLabel("Warmup days:"))
+            # Row 0: Warmup days + delays
+            sched_grid.addWidget(QLabel("Warmup days:"), 0, 0)
             self.warmup_days = QSpinBox()
-            self.warmup_days.setRange(1, 365); self.warmup_days.setValue(14)
-            top_row.addWidget(self.warmup_days)
-            top_row.addSpacing(20)
-            top_row.addWidget(QLabel("Delay between emails (s):"))
-            self.delay_email = QSpinBox()
-            self.delay_email.setRange(0, 3600); self.delay_email.setValue(10)
-            top_row.addWidget(self.delay_email)
-            top_row.addSpacing(20)
-            top_row.addWidget(QLabel("Delay between days (s):"))
-            self.delay_day = QSpinBox()
-            self.delay_day.setRange(0, 86400 * 7); self.delay_day.setValue(86400)
-            top_row.addWidget(self.delay_day)
-            top_row.addStretch()
-            sched_layout.addLayout(top_row)
+            self.warmup_days.setRange(1, 365)
+            self.warmup_days.setValue(14)
+            self.warmup_days.setFixedWidth(70)
+            sched_grid.addWidget(self.warmup_days, 0, 1)
 
-            mid_row = QHBoxLayout()
-            self.mode_day = QRadioButton("Specific day")
-            self.day_spin = QSpinBox()
-            self.day_spin.setRange(1, 365); self.day_spin.setValue(1)
-            mid_row.addWidget(self.mode_day)
-            mid_row.addWidget(self.day_spin)
-            mid_row.addSpacing(20)
+            sched_grid.addWidget(QLabel("Delay/email:"), 0, 2)
+            self.delay_email = QSpinBox()
+            self.delay_email.setRange(0, 3600)
+            self.delay_email.setValue(10)
+            self.delay_email.setFixedWidth(70)
+            sched_grid.addWidget(self.delay_email, 0, 3)
+            sched_grid.addWidget(QLabel("s"), 0, 4)
+
+            sched_grid.addWidget(QLabel("Delay/day:"), 0, 5)
+            self.delay_day = QSpinBox()
+            self.delay_day.setRange(0, 86400 * 7)
+            self.delay_day.setValue(86400)
+            self.delay_day.setFixedWidth(80)
+            sched_grid.addWidget(self.delay_day, 0, 6)
+            sched_grid.addWidget(QLabel("s"), 0, 7)
+
+            sched_grid.setColumnStretch(8, 1)
+
+            # Row 1: Mode selection
+            mode_widget = QWidget()
+            mode_lo = QHBoxLayout(mode_widget)
+            mode_lo.setContentsMargins(0, 0, 0, 0)
             self.mode_auto = QRadioButton("Auto (all days)")
             self.mode_auto.setChecked(True)
-            mid_row.addWidget(self.mode_auto)
-            mid_row.addStretch()
-            sched_layout.addLayout(mid_row)
+            mode_lo.addWidget(self.mode_auto)
+            mode_lo.addSpacing(20)
+            self.mode_day = QRadioButton("Specific day:")
+            mode_lo.addWidget(self.mode_day)
+            self.day_spin = QSpinBox()
+            self.day_spin.setRange(1, 365)
+            self.day_spin.setValue(1)
+            self.day_spin.setFixedWidth(60)
+            mode_lo.addWidget(self.day_spin)
+            mode_lo.addStretch()
+            sched_grid.addWidget(mode_widget, 1, 0, 1, 9)
 
-            btn_row = QHBoxLayout()
-            self.btn_start = QPushButton("▶ Start")
-            self.btn_start.setMinimumWidth(120)
+            # Row 2: Buttons
+            btn_row2 = QHBoxLayout()
+            self.btn_start = QPushButton("▶  Start")
+            self.btn_start.setMinimumWidth(130)
+            self.btn_start.setStyleSheet(
+                "QPushButton { background-color: #2e7d32; color: white; "
+                "border-radius: 6px; padding: 10px 24px; font-weight: bold; font-size: 14px; }"
+                "QPushButton:hover { background-color: #388e3c; }"
+                "QPushButton:disabled { background-color: #a5d6a7; }"
+            )
             self.btn_start.clicked.connect(self._start_warmup)
-            self.btn_pause = QPushButton("⏸ Pause")
-            self.btn_pause.setMinimumWidth(120)
+            self.btn_pause = QPushButton("⏸  Pause")
+            self.btn_pause.setMinimumWidth(130)
             self.btn_pause.setEnabled(False)
+            self.btn_pause.setStyleSheet(
+                "QPushButton { background-color: #e65100; color: white; "
+                "border-radius: 6px; padding: 10px 24px; font-weight: bold; font-size: 14px; }"
+                "QPushButton:hover { background-color: #ef6c00; }"
+                "QPushButton:disabled { background-color: #ffcc80; }"
+            )
             self.btn_pause.clicked.connect(self._pause_warmup)
-            btn_row.addWidget(self.btn_start)
-            btn_row.addWidget(self.btn_pause)
-            btn_row.addStretch()
-            sched_layout.addLayout(btn_row)
+            btn_row2.addWidget(self.btn_start)
+            btn_row2.addWidget(self.btn_pause)
+            btn_row2.addStretch()
+            sched_grid.addLayout(btn_row2, 2, 0, 1, 9)
 
             layout.addWidget(sched_group)
 
-            # ─ Log ─
+            # ─ Log ─────────────────────────────────────────────────────────
+            log_label = QLabel("Activity Log")
+            log_label.setStyleSheet("font-weight: bold; font-size: 12px; margin-top: 4px;")
+            layout.addWidget(log_label)
             self.log_output = QPlainTextEdit()
             self.log_output.setReadOnly(True)
             self.log_output.setMaximumBlockCount(5000)
-            self.log_output.setStyleSheet("font-family: monospace; font-size: 11px;")
+            self.log_output.setMinimumHeight(100)
+            self.log_output.setStyleSheet(
+                "QPlainTextEdit { font-family: 'Consolas', 'Monaco', monospace; "
+                "font-size: 11px; background: #1e1e1e; color: #d4d4d4; "
+                "border: 1px solid #ccc; border-radius: 4px; padding: 6px; }"
+            )
             layout.addWidget(self.log_output, stretch=1)
 
             # ─ Progress & Status ─
             self.progress = QProgressBar()
             self.progress.setVisible(False)
+            self.progress.setFixedHeight(22)
+            self.progress.setStyleSheet(
+                "QProgressBar { border: 1px solid #bbb; border-radius: 4px; "
+                "text-align: center; background: #eee; }"
+                "QProgressBar::chunk { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+                "stop:0 #2e7d32, stop:1 #66bb6a); border-radius: 3px; }"
+            )
             layout.addWidget(self.progress)
 
             self.status = QStatusBar()
@@ -772,46 +854,53 @@ def gui_main():
     app.setApplicationVersion(__version__)
     app.setOrganizationName("mailwarmer")
 
-    # Global stylesheet for consistent sizing
+    # Global stylesheet
     app.setStyleSheet("""
-        QMainWindow, QDialog {
-            font-size: 13px;
-        }
+        QMainWindow, QDialog { font-size: 13px; }
         QGroupBox {
-            font-weight: bold;
-            font-size: 13px;
-            padding-top: 8px;
-            margin-top: 4px;
+            font-weight: bold; font-size: 13px;
+            border: 1px solid #ccc; border-radius: 8px;
+            margin-top: 6px; padding-top: 14px;
         }
         QGroupBox::title {
-            subcontrol-origin: margin;
-            subcontrol-position: top left;
-            padding: 2px 8px;
+            subcontrol-origin: margin; subcontrol-position: top left;
+            padding: 2px 10px; color: #333;
         }
-        QLineEdit, QSpinBox, QPlainTextEdit, QTextEdit {
-            padding: 6px 8px;
-            font-size: 13px;
-            min-height: 22px;
+        QLineEdit, QSpinBox {
+            padding: 7px 10px; font-size: 13px; min-height: 24px;
+            border: 1px solid #ccc; border-radius: 5px;
+            background: white;
+        }
+        QLineEdit:focus, QSpinBox:focus {
+            border-color: #2e7d32;
         }
         QPushButton {
-            padding: 8px 18px;
-            font-size: 13px;
-            min-height: 24px;
+            padding: 8px 20px; font-size: 13px; min-height: 24px;
+            border: 1px solid #bbb; border-radius: 5px;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #f5f5f5, stop:1 #ddd);
         }
-        QComboBox {
-            padding: 6px 8px;
-            font-size: 13px;
-            min-height: 22px;
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #fff, stop:1 #e5e5e5);
         }
-        QCheckBox, QRadioButton {
-            font-size: 13px;
-            spacing: 6px;
-        }
-        QStatusBar {
-            font-size: 12px;
-        }
+        QCheckBox, QRadioButton { font-size: 13px; spacing: 6px; }
+        QStatusBar { font-size: 12px; }
         QTabWidget::pane {
-            padding: 4px;
+            border: 1px solid #ccc; border-radius: 5px;
+            padding: 6px; background: #fafafa;
+        }
+        QTabBar::tab {
+            padding: 6px 16px; font-size: 12px;
+            border: 1px solid #ccc; border-bottom: none;
+            border-top-left-radius: 4px; border-top-right-radius: 4px;
+            margin-right: 2px;
+        }
+        QTabBar::tab:selected {
+            background: white; font-weight: bold;
+        }
+        QTabBar::tab:!selected {
+            background: #e8e8e8;
         }
     """)
 
