@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component type="desktop-application">
+  <id>io.github.mitexleo.mailwarmer</id>
+  <name>Mail Warmer</name>
+  <summary>SMTP warm-up tool</summary>
+  <developer_name>Mueenul Islam</developer_name>
+  <url type="homepage">https://mueen.dev</url>
+  <url type="bugtracker">https://github.com/mitexleo/mailwarmer/issues</url>
+  <categories>
+    <category>Network</category>
+    <category>Email</category>
+  </categories>
+  <description>
+    <p>A desktop GUI tool for SMTP warm-up. Gradually sends emails to a list of recipients over multiple days to build sender reputation.</p>
+  </description>
+  <releases>
+    <release version="1.2.0" date="2026-06-07"/>
+  </releases>
+</component>

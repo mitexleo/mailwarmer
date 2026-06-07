@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Mail Warmer
+Comment=SMTP warm-up tool — gradually send emails to build sender reputation
+Exec=warmup
+Icon=io.github.mitexleo.mailwarmer
+Terminal=false
+Type=Application
+Categories=Network;Email;
+StartupNotify=true
