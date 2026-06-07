@@ -287,6 +287,8 @@ def gui_main():
             smtp_form.addRow("Pass:", self.smtp_pass)
             self.use_tls = QCheckBox("Enable STARTTLS")
             smtp_form.addRow("", self.use_tls)
+            # Add spacing around groups
+            smtp_group.setStyleSheet("QGroupBox{padding-top:12px;margin-top:4px}")
             layout.addWidget(smtp_group)
 
             # ─ Sender ─
@@ -741,6 +743,49 @@ def gui_main():
     app.setApplicationName("Mail Warmer")
     app.setApplicationVersion(__version__)
     app.setOrganizationName("mailwarmer")
+
+    # Global stylesheet for consistent sizing
+    app.setStyleSheet("""
+        QMainWindow, QDialog {
+            font-size: 13px;
+        }
+        QGroupBox {
+            font-weight: bold;
+            font-size: 13px;
+            padding-top: 8px;
+            margin-top: 4px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            padding: 2px 8px;
+        }
+        QLineEdit, QSpinBox, QPlainTextEdit, QTextEdit {
+            padding: 6px 8px;
+            font-size: 13px;
+            min-height: 22px;
+        }
+        QPushButton {
+            padding: 8px 18px;
+            font-size: 13px;
+            min-height: 24px;
+        }
+        QComboBox {
+            padding: 6px 8px;
+            font-size: 13px;
+            min-height: 22px;
+        }
+        QCheckBox, QRadioButton {
+            font-size: 13px;
+            spacing: 6px;
+        }
+        QStatusBar {
+            font-size: 12px;
+        }
+        QTabWidget::pane {
+            padding: 4px;
+        }
+    """)
 
     window = MainWindow()
     window.show()
