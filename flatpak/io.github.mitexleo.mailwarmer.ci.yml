@@ -14,8 +14,6 @@ cleanup:
   - /include
   - /lib/pkgconfig
   - /share/man
-rename-desktop-file: io.github.mitexleo.mailwarmer.desktop
-rename-icon: io.github.mitexleo.mailwarmer
 
 modules:
   - name: warmup
