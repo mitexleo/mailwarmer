@@ -37,8 +37,15 @@ jobs:
             libxcb-keysyms1 libxcb-icccm4 libxcb-render-util0 \
             libxcb-shape0
 
+      - name: Set version from git tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Setting __version__ = '$VERSION' from tag $GITHUB_REF_NAME"
+          sed -i "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" warmup_core.py
+
       - name: Build standalone binary with PyInstaller
         run: |
+          grep "__version__" warmup_core.py
           pyinstaller --onefile --name warmup warmup.py warmup_core.py
           ./dist/warmup --cli --help
 

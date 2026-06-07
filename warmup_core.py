@@ -22,7 +22,8 @@ except ImportError:
 
 # ── Version (used for self-update check) ──────────────────────────────────────
 
-__version__ = "1.3.1"
+# Auto-set from git tag during CI build. Update this when tagging locally.
+__version__ = "1.3.3"
 
 
 # ── Config ────────────────────────────────────────────────────────────────────
