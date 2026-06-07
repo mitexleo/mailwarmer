@@ -1,6 +1,6 @@
 app-id: io.github.mitexleo.mailwarmer
 runtime: org.freedesktop.Platform
-runtime-version: '24.08'
+runtime-version: "24.08"
 sdk: org.freedesktop.Sdk
 command: warmup
 
@@ -9,6 +9,13 @@ finish-args:
   - --socket=x11
   - --socket=wayland
   - --device=dri
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /share/man
+rename-desktop-file: io.github.mitexleo.mailwarmer.desktop
+rename-icon: io.github.mitexleo.mailwarmer
 
 modules:
   - name: warmup
