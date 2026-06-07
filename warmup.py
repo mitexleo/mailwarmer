@@ -712,19 +712,47 @@ def gui_main():
                     return
                 data = json.loads(bytes(reply.readAll()).decode())
                 latest_version = data.get("tag_name", "").lstrip("v")
-                if self._is_newer(latest_version, __version__):
-                    msg = QMessageBox(self)
-                    msg.setIcon(QMessageBox.Information)
-                    msg.setWindowTitle("Update Available")
-                    msg.setTextFormat(Qt.RichText)
-                    msg.setText(
-                        f"A new version is available: <b>v{latest_version}</b> "
-                        f"(you have v{__version__}).<br><br>"
-                        f'<a href="https://github.com/mitexleo/mailwarmer/releases/latest">'
-                        f"Download from GitHub Releases →</a>"
+                if not self._is_newer(latest_version, __version__):
+                    return
+
+                # Build release notes snippet
+                body = data.get("body", "")
+                release_url = data.get("html_url", "https://github.com/mitexleo/mailwarmer/releases/latest")
+                notes = body[:500] + ("…" if len(body) > 500 else "") if body else ""
+
+                # Detect Flatpak
+                is_flatpak = os.environ.get("FLATPAK_ID") == "io.github.mitexleo.mailwarmer" \
+                             or "/app" in __file__
+
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Information)
+                msg.setWindowTitle(f"Update Available: v{latest_version}")
+                msg.setTextFormat(Qt.RichText)
+
+                html = (
+                    f"<h3>v{latest_version} is now available</h3>"
+                    f"<p>You have <b>v{__version__}</b>.</p>"
+                )
+                if notes:
+                    html += f"<hr><pre style='font-size:11px;color:#666'>{notes}</pre>"
+                html += (
+                    f'<p><a href="{release_url}">'
+                    f'View full release on GitHub →</a></p>'
+                )
+                if is_flatpak:
+                    html += (
+                        "<hr><p><b>Flatpak user?</b> Run this to update:</p>"
+                        "<pre style='background:#f0f0f0;padding:6px;font-size:12px'>"
+                        "flatpak update io.github.mitexleo.mailwarmer</pre>"
                     )
-                    msg.setStandardButtons(QMessageBox.Ok)
-                    msg.exec()
+
+                msg.setText(html)
+                download_btn = msg.addButton("⬇ Download", QMessageBox.ActionRole)
+                msg.addButton(QMessageBox.Close)
+                msg.exec()
+
+                if msg.clickedButton() == download_btn:
+                    QDesktopServices.openUrl(QUrl(release_url))
             except Exception:
                 pass
 
