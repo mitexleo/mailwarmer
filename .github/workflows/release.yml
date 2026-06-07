@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install Python dependencies
         run: |
@@ -47,10 +47,13 @@ jobs:
             -t deb \
             -n warmup \
             -v "$VERSION" \
+            --iteration 1 \
+            --architecture amd64 \
             --description "SMTP warm-up tool — gradually send emails to build sender reputation" \
             --license MIT \
             --url "https://github.com/${{ github.repository }}" \
             --maintainer "${{ github.repository_owner }}" \
+            --deb-no-default-config-files \
             ./dist/warmup=/usr/local/bin/warmup
 
       - name: Package .rpm
@@ -61,11 +64,17 @@ jobs:
             -t rpm \
             -n warmup \
             -v "$VERSION" \
+            --iteration 1 \
+            --architecture amd64 \
+            --rpm-os linux \
             --description "SMTP warm-up tool — gradually send emails to build sender reputation" \
             --license MIT \
             --url "https://github.com/${{ github.repository }}" \
             --maintainer "${{ github.repository_owner }}" \
             ./dist/warmup=/usr/local/bin/warmup
+
+      - name: List packages
+        run: ls -la warmup*.deb warmup*.rpm
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -74,5 +83,5 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: |
             warmup_*.deb
-            warmup_*.rpm
+            warmup*.rpm
           generate_release_notes: true
