@@ -1,0 +1,29 @@
+app-id: io.github.mitexleo.mailwarmer
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: warmup
+
+finish-args:
+  - --share=network
+  - --socket=x11
+  - --socket=wayland
+  - --device=dri
+
+modules:
+  - name: warmup
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 warmup /app/bin/warmup
+      - install -Dm644 io.github.mitexleo.mailwarmer.desktop /app/share/applications/io.github.mitexleo.mailwarmer.desktop
+      - install -Dm644 io.github.mitexleo.mailwarmer.metainfo.xml /app/share/metainfo/io.github.mitexleo.mailwarmer.metainfo.xml
+      - install -Dm644 io.github.mitexleo.mailwarmer.svg /app/share/icons/hicolor/scalable/apps/io.github.mitexleo.mailwarmer.svg
+    sources:
+      - type: file
+        path: warmup
+      - type: file
+        path: io.github.mitexleo.mailwarmer.desktop
+      - type: file
+        path: io.github.mitexleo.mailwarmer.metainfo.xml
+      - type: file
+        path: io.github.mitexleo.mailwarmer.svg

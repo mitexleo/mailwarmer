@@ -42,6 +42,12 @@ jobs:
           pyinstaller --onefile --name warmup warmup.py warmup_core.py
           ./dist/warmup --cli --help
 
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: warmup-binary
+          path: dist/warmup
+
       - name: Install fpm and rpmbuild
         run: |
           sudo apt-get update
@@ -93,7 +99,6 @@ jobs:
           files: |
             warmup_*.deb
             warmup*.rpm
-            mailwarmer.flatpak
           generate_release_notes: true
 
   flatpak:
@@ -105,22 +110,47 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Download binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: warmup-binary
+          path: flatpak/
+
       - name: Install flatpak and flatpak-builder
         run: |
           sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder
 
+      - name: Cache Flatpak runtimes
+        id: cache-flatpak
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/flatpak
+            .flatpak-builder
+          key: flatpak-${{ runner.os }}-freedesktop-24.08
+
       - name: Add Flathub remote (user mode)
+        if: steps.cache-flatpak.outputs.cache-hit != 'true'
         run: flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
-      - name: Install KDE Platform and SDK (user mode)
-        run: flatpak install --user -y flathub org.kde.Platform//6.7 org.kde.Sdk//6.7
+      - name: Install Freedesktop Platform (user mode)
+        if: steps.cache-flatpak.outputs.cache-hit != 'true'
+        run: flatpak install --user -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
 
       - name: Build Flatpak
-        run: flatpak-builder --force-clean build-dir flatpak/io.github.mitexleo.mailwarmer.yml
+        run: |
+          flatpak-builder \
+            --force-clean \
+            --user \
+            --disable-cache \
+            build-dir \
+            flatpak/io.github.mitexleo.mailwarmer.ci.yml
 
       - name: Export and bundle
-        run: flatpak build-export repo build-dir && flatpak build-bundle repo mailwarmer.flatpak io.github.mitexleo.mailwarmer
+        run: |
+          flatpak build-export repo build-dir
+          flatpak build-bundle repo mailwarmer.flatpak io.github.mitexleo.mailwarmer
 
       - name: Upload Flatpak to Release
         uses: softprops/action-gh-release@v2
