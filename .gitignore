@@ -1,5 +1,6 @@
-# Excel data files (contains recipient data)
+# Excel / CSV data files (contains recipient data)
 *.xlsx
+*.csv
 
 # Python cache
 __pycache__/
@@ -11,9 +12,14 @@ __pycache__/
 .venv/
 venv/
 
-# Auto-generated from email_body.txt.template
-email_body.txt
-email_body.html
+# Auto-generated state and logs
+warmup_state.json
+warmup.log
+
+# Build artifacts
+dist/
+*.deb
+*.rpm
 
 # OS files
 .DS_Store

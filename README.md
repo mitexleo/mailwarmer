@@ -1,66 +1,83 @@
 # Mail Warmer
 
-A generic SMTP warm-up script that gradually sends emails to recipients over multiple days to build sender reputation.
-
-## Features
-
-- **Generic** — configure everything via `.env`: SMTP, sender, recipient file, email content, schedule
-- **Auto-generated schedule** — distributes recipients across N days with a gradual ramp-up
-- **Template-based email body** — customize HTML and plain-text email bodies in separate files
-- **Resumable** — tracks sent count per day in a JSON state file, safe to restart
-- **Two modes** — run a single day or auto-run all days with configurable delays
+A generic SMTP warm-up CLI tool. Gradually sends emails to a list of recipients
+over multiple days to build sender reputation.
 
 ## Quick Start
 
 ```bash
+# Install dependencies (for running via Python directly)
 pip install openpyxl python-dotenv
+
+# Create config from the example
 cp .env.example .env
-# Edit .env with your SMTP credentials, sender info, file paths, etc.
+# Edit .env with your SMTP credentials, sender info, and subject
+
+# Run day 1
+python3 warmup.py -c .env -d recipients.xlsx -e body.html --day 1
+
+# Or auto-run all days
+python3 warmup.py -c .env -d recipients.csv -e body.html --auto
 ```
 
-## Usage
+## CLI Usage
+
+```
+usage: warmup [-h] [-c CONFIG] -d DATA -e EMAIL [-s STATE] --day DAY | --auto
+
+SMTP warm-up — gradually send emails to build sender reputation.
+
+arguments:
+  -c, --config CONFIG   Path to .env config file (default: ./.env)
+  -d, --data DATA       Path to .xlsx or .csv file with recipient emails
+  -e, --email EMAIL     Path to HTML email body file
+  -s, --state STATE     Path to state JSON file (overrides STATE_FILE in config)
+
+  --day DAY             Run a specific day number
+  --auto                Run all days automatically with delays between them
+```
+
+## Configuration (.env)
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `SMTP_HOST` | Yes | — | SMTP server hostname |
+| `SMTP_PORT` | No | 25 | SMTP server port |
+| `SMTP_USER` | Yes | — | SMTP username |
+| `SMTP_PASS` | Yes | — | SMTP password |
+| `USE_TLS` | No | false | Enable STARTTLS |
+| `FROM_NAME` | Yes | — | Sender display name |
+| `FROM_EMAIL` | Yes | — | Sender email address |
+| `EMAIL_SUBJECT` | Yes | — | Email subject line |
+| `WARMUP_DAYS` | No | 14 | Number of days to spread recipients across |
+| `DELAY_BETWEEN_EMAILS` | No | 10 | Seconds between each email send |
+| `DELAY_BETWEEN_DAYS` | No | 86400 | Seconds between days in auto mode |
+| `STATE_FILE` | No | warmup_state.json | State tracking file |
+
+## Data File
+
+The `-d` flag accepts **.xlsx** or **.csv** files. The first column should contain
+the recipient email addresses.
+
+## Build from Source
 
 ```bash
-# Run a specific day
-python3 warmup.py --day 1
-
-# Run all remaining days automatically (with delays between days)
-python3 warmup.py --auto
+pip install pyinstaller openpyxl python-dotenv
+pyinstaller --onefile --name warmup warmup.py
+./dist/warmup --help
 ```
 
-## Configuration
+## Install from Packages
 
-All configuration is done via `.env`. See `.env.example` for all options.
+Download the `.deb` (Debian/Ubuntu) or `.rpm` (RHEL/Fedora/CentOS) package from
+the [Releases](https://github.com/mitexleo/mailwarmer/releases) page.
 
-| Variable | Required | Description |
-|---|---|---|
-| `SMTP_HOST` | Yes | SMTP server hostname |
-| `SMTP_PORT` | No (25) | SMTP server port |
-| `SMTP_USER` | Yes | SMTP username |
-| `SMTP_PASS` | Yes | SMTP password |
-| `USE_TLS` | No (false) | Enable STARTTLS |
-| `FROM_NAME` | Yes | Sender display name |
-| `FROM_EMAIL` | Yes | Sender email address |
-| `XLSX_FILE` | Yes | Path to recipients xlsx file |
-| `EMAIL_SUBJECT` | Yes | Email subject line |
-| `TEXT_TEMPLATE` | No (email_body.txt.template) | Plain text template (HTML auto-generated from it) |
-| `WARMUP_DAYS` | No (14) | Number of days to spread recipients across |
-| `DELAY_BETWEEN_EMAILS` | No (10) | Seconds between each email send |
-| `DELAY_BETWEEN_DAYS` | No (86400) | Seconds between days in auto mode |
+```bash
+# Debian / Ubuntu
+sudo dpkg -i warmup_*.deb
 
-## Email Templates
+# RHEL / Fedora / CentOS
+sudo rpm -i warmup_*.rpm
+```
 
-Edit `email_body.txt` (copy from `email_body.txt.template`) with your plain text content.
-The script auto-generates `email_body.html` from it, wrapping paragraphs in HTML.
-Use `{{FROM_NAME}}` as a placeholder — it will be replaced with the sender name.
-
-Only HTML is sent (no text/plain part).
-
-**File roles:**
-- `email_body.txt.template` — example template (tracked in git)
-- `email_body.txt` — your actual content (gitignored, copied from template)
-- `email_body.html` — auto-generated from text (gitignored)
-
-## State
-
-Progress is tracked in `warmup_state.json` (configurable via `STATE_FILE`). The script resumes from where it left off if interrupted.
+The binary will be installed at `/usr/local/bin/warmup`.

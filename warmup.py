@@ -1,207 +1,154 @@
 #!/usr/bin/env python3
 """
-Mail server warm-up script
-Reads recipients from an xlsx file and sends emails gradually over days.
+SMTP warm-up CLI — gradually sends emails to a list of recipients over multiple
+days to build sender reputation.
 
 Usage:
-  Day 1:  python3 warmup.py --day 1
-  Day 2:  python3 warmup.py --day 2
-  ...etc
-
-Or run continuously (waits between days):
-  python3 warmup.py --auto
-
-Requirements:
-  pip install openpyxl python-dotenv
-  cp .env.example .env    # then edit .env with your real config
+  warmup -c .env -d recipients.xlsx -e body.html --day 1
+  warmup --config .env --data recipients.csv --email body.html --auto
 """
 
-import smtplib
-import time
 import argparse
-import logging
+import csv
 import json
-import math
+import logging
 import os
-import re
+import smtplib
+import sys
+import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from datetime import datetime
 
 from dotenv import load_dotenv
-from openpyxl import load_workbook
 
-# Load environment variables from .env (ignored by git)
-load_dotenv()
-
-# ── Config (from .env) ────────────────────────────────────────────────────────
-
-SMTP_HOST = os.getenv("SMTP_HOST")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "25"))
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASS = os.getenv("SMTP_PASS")
-USE_TLS   = os.getenv("USE_TLS", "false").lower() == "true"
-
-FROM_NAME  = os.getenv("FROM_NAME")
-FROM_EMAIL = os.getenv("FROM_EMAIL")
-
-XLSX_FILE      = os.getenv("XLSX_FILE")
-STATE_FILE     = os.getenv("STATE_FILE", "warmup_state.json")
-EMAIL_SUBJECT  = os.getenv("EMAIL_SUBJECT")
-TEXT_TEMPLATE  = os.getenv("TEXT_TEMPLATE", "email_body.txt.template")
-
-WARMUP_DAYS           = int(os.getenv("WARMUP_DAYS", "14"))
-DELAY_BETWEEN_EMAILS  = int(os.getenv("DELAY_BETWEEN_EMAILS", "10"))
-DELAY_BETWEEN_DAYS    = int(os.getenv("DELAY_BETWEEN_DAYS", "86400"))
-
-required_vars = {
-    "SMTP_HOST": SMTP_HOST,
-    "SMTP_USER": SMTP_USER,
-    "SMTP_PASS": SMTP_PASS,
-    "FROM_NAME": FROM_NAME,
-    "FROM_EMAIL": FROM_EMAIL,
-    "XLSX_FILE": XLSX_FILE,
-    "EMAIL_SUBJECT": EMAIL_SUBJECT,
-}
-missing = [name for name, val in required_vars.items() if not val]
-if missing:
-    raise SystemExit(
-        f"Missing required env vars: {', '.join(missing)}\n"
-        "Copy .env.example to .env and fill in your values."
-    )
-
-# ── Logging setup ────────────────────────────────────────────────────────────
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("warmup.log"),
-    ]
-)
-log = logging.getLogger(__name__)
+# Optional — xlsx support
+try:
+    from openpyxl import load_workbook
+except ImportError:
+    load_workbook = None
 
 
-# ── Load template files ──────────────────────────────────────────────────────
+# ── Config ────────────────────────────────────────────────────────────────────
 
-def _load_template(path):
-    """Load a template file and replace {{FROM_NAME}} placeholders."""
-    try:
-        with open(path) as f:
-            content = f.read()
-        return content.replace("{{FROM_NAME}}", FROM_NAME)
-    except FileNotFoundError:
-        log.warning("Template file '%s' not found, using empty body.", path)
-        return ""
+def load_config(env_path):
+    """Load .env file and return a config dict."""
+    load_dotenv(dotenv_path=env_path, override=True)
 
+    cfg = {
+        "smtp_host":      os.getenv("SMTP_HOST"),
+        "smtp_port":      int(os.getenv("SMTP_PORT", "25")),
+        "smtp_user":      os.getenv("SMTP_USER"),
+        "smtp_pass":      os.getenv("SMTP_PASS"),
+        "use_tls":        os.getenv("USE_TLS", "false").lower() == "true",
+        "from_name":      os.getenv("FROM_NAME"),
+        "from_email":     os.getenv("FROM_EMAIL"),
+        "email_subject":  os.getenv("EMAIL_SUBJECT"),
+        "warmup_days":    int(os.getenv("WARMUP_DAYS", "14")),
+        "delay_emails":   int(os.getenv("DELAY_BETWEEN_EMAILS", "10")),
+        "delay_days":     int(os.getenv("DELAY_BETWEEN_DAYS", "86400")),
+        "state_file":     os.getenv("STATE_FILE", "warmup_state.json"),
+    }
 
-def _text_to_html(text):
-    """Convert plain text into a basic HTML email body."""
-    paragraphs = text.strip().split("\n\n")
-    html_paragraphs = []
-    for p in paragraphs:
-        lines = p.replace("\n", "<br>")
-        html_paragraphs.append(f"<p>{lines}</p>")
-    body = "\n".join(html_paragraphs)
-    return f"""\
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-</head>
-<body style="font-family: Arial, sans-serif; padding: 20px;">
-{body}
-</body>
-</html>
-"""
+    required = ["smtp_host", "smtp_user", "smtp_pass", "from_name", "from_email", "email_subject"]
+    missing = [k.upper() for k in required if not cfg[k]]
+    if missing:
+        raise SystemExit(
+            f"Missing required env vars in {env_path}: {', '.join(missing)}\n"
+            "See .env.example for a reference."
+        )
+
+    return cfg
 
 
-# ── Email content ─────────────────────────────────────────────────────────────
+# ── Recipient loader ──────────────────────────────────────────────────────────
 
-SUBJECT    = EMAIL_SUBJECT
-TEXT_SOURCE = _load_template(TEXT_TEMPLATE)
-HTML_BODY   = _text_to_html(TEXT_SOURCE) if TEXT_SOURCE else ""
+def load_recipients(path):
+    """Load email addresses from an XLSX or CSV file (first column)."""
+    if not os.path.exists(path):
+        raise SystemExit(f"Data file not found: {path}")
 
-# Persist the generated HTML for inspection
-if HTML_BODY:
-    with open("email_body.html", "w") as f:
-        f.write(HTML_BODY)
-    log.info("Generated email_body.html from %s", TEXT_TEMPLATE)
+    ext = os.path.splitext(path)[1].lower()
+
+    if ext == ".xlsx":
+        if load_workbook is None:
+            raise SystemExit(
+                "openpyxl is required for .xlsx files. Install with: pip install openpyxl"
+            )
+        wb = load_workbook(path, read_only=True)
+        ws = wb.active
+        return [str(row[0]).strip() for row in ws.iter_rows(values_only=True) if row[0]]
+
+    elif ext == ".csv":
+        recipients = []
+        with open(path, newline="") as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if row and row[0].strip():
+                    recipients.append(row[0].strip())
+        return recipients
+
+    else:
+        raise SystemExit(f"Unsupported file type: {ext}. Use .xlsx or .csv.")
 
 
-# ── Schedule generator ────────────────────────────────────────────────────────
+# ── HTML loader ───────────────────────────────────────────────────────────────
 
-def build_schedule(total_recipients, days):
-    """
-    Generate a warm-up schedule that ramps up gradually over `days`.
-    Returns a dict: day_number → emails_to_send.
-    """
-    if days <= 0 or total_recipients <= 0:
+def load_html_body(path):
+    """Read and return the HTML email body from a file."""
+    if not os.path.exists(path):
+        raise SystemExit(f"Email HTML file not found: {path}")
+    with open(path) as f:
+        return f.read()
+
+
+# ── Schedule ──────────────────────────────────────────────────────────────────
+
+def build_schedule(total, days):
+    """Generate a gradual ramp-up schedule over N days."""
+    if days <= 0 or total <= 0:
         return {}
-
-    base = total_recipients // days
-    remainder = total_recipients % days
 
     schedule = {}
     for d in range(1, days + 1):
-        # Linear ramp: start small, grow toward peak
-        ratio = (d / days)
-        raw = max(1, round(total_recipients * ratio * (2 / (days + 1)) * d))
-        # Clamp: at least 1, at most remaining
-        already = sum(schedule.get(i, 0) for i in range(1, d))
-        remaining = total_recipients - already
-        quota = min(raw, remaining)
-        # If this is the last day, send whatever is left
         if d == days:
-            quota = remaining
-        schedule[d] = quota
+            already = sum(schedule.values())
+            schedule[d] = total - already
+        else:
+            ratio = (d / days)
+            raw = max(1, round(total * ratio * (2 / (days + 1)) * d))
+            already = sum(schedule.values())
+            remaining = total - already
+            schedule[d] = min(raw, remaining)
 
-    # Final sanity: ensure totals match
-    total = sum(schedule.values())
-    if total < total_recipients:
-        schedule[days] += total_recipients - total
-    elif total > total_recipients:
-        schedule[days] -= total - total_recipients
-
-    # Remove zero-quota days
     return {d: q for d, q in schedule.items() if q > 0}
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── State ─────────────────────────────────────────────────────────────────────
 
-
-
-def load_recipients():
-    wb = load_workbook(XLSX_FILE, read_only=True)
-    ws = wb.active
-    return [row[0] for row in ws.iter_rows(values_only=True) if row[0]]
-
-
-def load_state():
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE) as f:
+def load_state(path):
+    if os.path.exists(path):
+        with open(path) as f:
             return json.load(f)
     return {"sent_index": 0, "last_day": 0}
 
 
-def save_state(state):
-    with open(STATE_FILE, "w") as f:
+def save_state(path, state):
+    with open(path, "w") as f:
         json.dump(state, f, indent=2)
 
 
-def build_message(to_email):
+# ── Sender ────────────────────────────────────────────────────────────────────
+
+def build_message(to_email, cfg, html_body):
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = SUBJECT
-    msg["From"]    = f"{FROM_NAME} <{FROM_EMAIL}>"
+    msg["Subject"] = cfg["email_subject"]
+    msg["From"]    = f'{cfg["from_name"]} <{cfg["from_email"]}>'
     msg["To"]      = to_email
-    # Always send HTML-only (no text/plain fallback)
-    if HTML_BODY:
-        msg.attach(MIMEText(HTML_BODY, "html"))
+    msg.attach(MIMEText(html_body, "html"))
     return msg
 
 
-def send_batch(recipients, count, state):
+def send_batch(recipients, count, state, cfg, html_body, log):
     start = state["sent_index"]
     batch = recipients[start:start + count]
 
@@ -209,78 +156,117 @@ def send_batch(recipients, count, state):
         log.info("No more recipients to send to.")
         return 0
 
-    log.info(f"Connecting to {SMTP_HOST}:{SMTP_PORT} ...")
+    log.info("Connecting to %s:%s ...", cfg["smtp_host"], cfg["smtp_port"])
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
+        with smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"], timeout=30) as smtp:
             smtp.ehlo()
-            if USE_TLS:
+            if cfg["use_tls"]:
                 smtp.starttls()
                 smtp.ehlo()
-            smtp.login(SMTP_USER, SMTP_PASS)
+            smtp.login(cfg["smtp_user"], cfg["smtp_pass"])
             log.info("Authenticated OK.")
 
             sent = 0
             for email in batch:
                 try:
-                    msg = build_message(email)
-                    smtp.sendmail(FROM_EMAIL, [email], msg.as_string())
-                    log.info(f"  ✓ Sent to {email}")
+                    msg = build_message(email, cfg, html_body)
+                    smtp.sendmail(cfg["from_email"], [email], msg.as_string())
+                    log.info("  ✓ Sent to %s", email)
                     sent += 1
                     state["sent_index"] += 1
-                    save_state(state)
+                    save_state(cfg["state_file"], state)
                     if email != batch[-1]:
-                        time.sleep(DELAY_BETWEEN_EMAILS)
+                        time.sleep(cfg["delay_emails"])
                 except smtplib.SMTPException as e:
-                    log.warning(f"  ✗ Failed {email}: {e}")
+                    log.warning("  ✗ Failed %s: %s", email, e)
 
     except Exception as e:
-        log.error(f"SMTP connection error: {e}")
+        log.error("SMTP connection error: %s", e)
         return 0
 
     return sent
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── CLI ───────────────────────────────────────────────────────────────────────
 
-def run_day(day, recipients, state, schedule):
-    quota = schedule.get(day)
-    if quota is None:
-        log.error(f"No schedule entry for day {day}. Check WARMUP_DAYS config.")
-        return
+def build_parser():
+    p = argparse.ArgumentParser(
+        prog="warmup",
+        description="SMTP warm-up — gradually send emails to build sender reputation.",
+    )
+    p.add_argument("-c", "--config",  default=".env",
+                   help="Path to .env config file (default: ./.env)")
+    p.add_argument("-d", "--data",    required=True,
+                   help="Path to .xlsx or .csv file with recipient email addresses")
+    p.add_argument("-e", "--email",   required=True,
+                   help="Path to HTML email body file")
+    p.add_argument("-s", "--state",
+                   help="Path to state JSON file (overrides STATE_FILE in config)")
 
-    log.info(f"=== Day {day}: sending up to {quota} emails (sent so far: {state['sent_index']}) ===")
-    sent = send_batch(recipients, quota, state)
-    state["last_day"] = day
-    save_state(state)
-    log.info(f"=== Day {day} done: {sent} emails sent. Total sent: {state['sent_index']} ===")
+    mode = p.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--day",  type=int,
+                      help="Run a specific day number")
+    mode.add_argument("--auto", action="store_true",
+                      help="Run all days automatically with delays between them")
+    return p
 
 
 def main():
-    parser = argparse.ArgumentParser(description="SMTP warm-up script")
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--day", type=int, help="Run a specific day")
-    group.add_argument("--auto", action="store_true", help="Run all days automatically with configured delays")
-    args = parser.parse_args()
+    args = build_parser().parse_args()
 
-    recipients = load_recipients()
-    log.info(f"Loaded {len(recipients)} recipients from {XLSX_FILE}")
+    # Load config
+    cfg = load_config(args.config)
 
-    schedule = build_schedule(len(recipients), WARMUP_DAYS)
-    log.info(f"Auto-generated schedule over {len(schedule)} days: {dict(schedule)}")
+    # CLI overrides
+    if args.state:
+        cfg["state_file"] = args.state
 
-    state = load_state()
-    log.info(f"Resuming: sent_index={state['sent_index']}, last_day={state['last_day']}")
+    # Load data
+    recipients = load_recipients(args.data)
+    log.info("Loaded %d recipients from %s", len(recipients), args.data)
+
+    # Load email HTML
+    html_body = load_html_body(args.email)
+    log.info("Loaded HTML body from %s (%d bytes)", args.email, len(html_body))
+
+    # Build schedule
+    schedule = build_schedule(len(recipients), cfg["warmup_days"])
+    log.info("Schedule over %d days: %s", len(schedule), dict(schedule))
+
+    # Load state
+    state = load_state(cfg["state_file"])
+    log.info("State: sent_index=%d, last_day=%d", state["sent_index"], state["last_day"])
+
+    def run_day(day):
+        quota = schedule.get(day)
+        if quota is None:
+            log.error("Day %d is not in the schedule. Check WARMUP_DAYS.", day)
+            return
+        log.info("=== Day %d: sending up to %d emails ===", day, quota)
+        sent = send_batch(recipients, quota, state, cfg, html_body, log)
+        state["last_day"] = day
+        save_state(cfg["state_file"], state)
+        log.info("=== Day %d done: sent %d, total sent %d ===", day, sent, state["sent_index"])
 
     if args.day:
-        run_day(args.day, recipients, state, schedule)
+        run_day(args.day)
     elif args.auto:
         start_day = state["last_day"] + 1
         for day in range(start_day, max(schedule.keys()) + 1):
-            run_day(day, recipients, state, schedule)
+            run_day(day)
             if day < max(schedule.keys()) and state["sent_index"] < len(recipients):
-                log.info(f"Sleeping {DELAY_BETWEEN_DAYS}s before day {day + 1} ...")
-                time.sleep(DELAY_BETWEEN_DAYS)
+                log.info("Sleeping %ds before day %d ...", cfg["delay_days"], day + 1)
+                time.sleep(cfg["delay_days"])
 
+
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()],
+)
+log = logging.getLogger("warmup")
 
 if __name__ == "__main__":
     main()
