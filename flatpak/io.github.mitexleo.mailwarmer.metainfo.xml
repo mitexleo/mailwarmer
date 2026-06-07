@@ -4,7 +4,7 @@
   <name>Mail Warmer</name>
   <summary>SMTP warm-up tool</summary>
   <developer_name>Mueenul Islam</developer_name>
-  <project_license>MIT</project_license>
+  <project_license>AGPL-3.0-or-later</project_license>
   <url type="homepage">https://mueen.dev</url>
   <url type="bugtracker">https://github.com/mitexleo/mailwarmer/issues</url>
   <categories>

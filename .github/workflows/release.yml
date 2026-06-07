@@ -65,7 +65,7 @@ jobs:
             --iteration 1 \
             --architecture amd64 \
             --description "SMTP warm-up tool — gradually send emails to build sender reputation" \
-            --license MIT \
+            --license AGPL-3.0-or-later \
             --url "https://github.com/${{ github.repository }}" \
             --maintainer "${{ github.repository_owner }}" \
             --deb-no-default-config-files \
@@ -83,7 +83,7 @@ jobs:
             --architecture amd64 \
             --rpm-os linux \
             --description "SMTP warm-up tool — gradually send emails to build sender reputation" \
-            --license MIT \
+            --license AGPL-3.0-or-later \
             --url "https://github.com/${{ github.repository }}" \
             --maintainer "${{ github.repository_owner }}" \
             ./dist/warmup=/usr/local/bin/warmup
