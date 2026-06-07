@@ -1,0 +1,20 @@
+# Excel data files (contains recipient data)
+*.xlsx
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.venv/
+venv/
+
+# Auto-generated from email_body.txt.template
+email_body.txt
+email_body.html
+
+# OS files
+.DS_Store
+Thumbs.db
