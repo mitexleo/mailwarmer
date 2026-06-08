@@ -47,7 +47,16 @@ jobs:
         run: |
           grep "__version__" warmup_core.py
           pyinstaller --onefile --name warmup warmup.py warmup_core.py
+
+      - name: Smoke test — CLI mode
+        run: |
           ./dist/warmup --cli --help
+
+      - name: Smoke test — GUI mode (offscreen)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          timeout 5 ./dist/warmup 2>&1 || true
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4

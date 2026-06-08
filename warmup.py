@@ -16,10 +16,10 @@ import time
 
 from warmup_core import (
     __version__,
-    load_config,
-    load_recipients,
-    load_html_body,
     build_schedule,
+    load_config,
+    load_html_body,
+    load_recipients,
     load_state,
     save_state,
     send_batch,
@@ -30,6 +30,7 @@ from warmup_core import (
 
 
 # ── Settings file (portable, stored next to the binary) ───────────────────────
+
 
 def _settings_path():
     """Return path to the app settings JSON file."""
@@ -56,6 +57,7 @@ def _load_settings():
 
 # ── CLI mode (no Qt needed) ──────────────────────────────────────────────────
 
+
 def cli_main():
     """Run CLI mode when --cli is passed."""
     parser = argparse.ArgumentParser(prog="warmup --cli")
@@ -68,7 +70,9 @@ def cli_main():
     mode.add_argument("--auto", action="store_true")
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+    )
     log = logging.getLogger("warmup.cli")
 
     cfg = load_config(args.config)
@@ -80,7 +84,9 @@ def cli_main():
     schedule = build_schedule(len(recipients), cfg["warmup_days"])
     state = load_state(cfg["state_file"])
 
-    log.info("Loaded %d recipients, schedule over %d days", len(recipients), len(schedule))
+    log.info(
+        "Loaded %d recipients, schedule over %d days", len(recipients), len(schedule)
+    )
 
     def run_day(day):
         quota = schedule.get(day)
@@ -106,17 +112,35 @@ def cli_main():
 
 # ── GUI (requires PySide6) ────────────────────────────────────────────────────
 
+
 def gui_main():
     """Launch the Qt GUI application."""
     # Deferred imports so --cli doesn't need Qt
-    from PySide6.QtCore import QObject, QThread, Signal, Slot, Qt, QUrl
+    from PySide6.QtCore import QObject, Qt, QThread, QUrl, Signal, Slot
     from PySide6.QtGui import QAction, QDesktopServices, QIcon, QTextCursor
     from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
     from PySide6.QtWidgets import (
-        QApplication, QCheckBox, QDialog, QFileDialog, QFormLayout,
-        QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox,
-        QPlainTextEdit, QProgressBar, QPushButton, QRadioButton,
-        QSpinBox, QStatusBar, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
+        QApplication,
+        QCheckBox,
+        QDialog,
+        QFileDialog,
+        QFormLayout,
+        QGroupBox,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QMainWindow,
+        QMessageBox,
+        QPlainTextEdit,
+        QProgressBar,
+        QPushButton,
+        QRadioButton,
+        QSpinBox,
+        QStatusBar,
+        QTabWidget,
+        QTextEdit,
+        QVBoxLayout,
+        QWidget,
     )
 
     # ── Log handler that emits Qt signals ─────────────────────────────────
@@ -142,7 +166,9 @@ def gui_main():
         finished = Signal()
         error = Signal(str)
 
-        def __init__(self, recipients, schedule, state, cfg, html_body, day=None, auto=False):
+        def __init__(
+            self, recipients, schedule, state, cfg, html_body, day=None, auto=False
+        ):
             super().__init__()
             self.recipients = recipients
             self.schedule = schedule
@@ -167,11 +193,15 @@ def gui_main():
             logger.setLevel(logging.INFO)
             gui_handler = QtLogHandler(LogSignal())
             gui_handler.signal.message.connect(self._log)
-            gui_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+            gui_handler.setFormatter(
+                logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+            )
             logger.addHandler(gui_handler)
 
             file_handler = logging.FileHandler("warmup.log")
-            file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+            file_handler.setFormatter(
+                logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+            )
             logger.addHandler(file_handler)
 
             def progress_cb(cur, total):
@@ -187,10 +217,16 @@ def gui_main():
                             logger.info("Paused by user.")
                             break
                         self._run_day(d, logger, progress_cb)
-                        if d < max(self.schedule.keys()) and self.state["sent_index"] < len(self.recipients):
+                        if d < max(self.schedule.keys()) and self.state[
+                            "sent_index"
+                        ] < len(self.recipients):
                             if self._stop:
                                 break
-                            logger.info("Sleeping %ds before day %d ...", self.cfg["delay_days"], d + 1)
+                            logger.info(
+                                "Sleeping %ds before day %d ...",
+                                self.cfg["delay_days"],
+                                d + 1,
+                            )
                             for _ in range(self.cfg["delay_days"]):
                                 if self._stop:
                                     break
@@ -206,10 +242,23 @@ def gui_main():
                 logger.error("Day %d is not in the schedule.", day)
                 return
             logger.info("=== Day %d: sending up to %d emails ===", day, quota)
-            sent = send_batch(self.recipients, quota, self.state, self.cfg, self.html_body, logger, progress_cb)
+            sent = send_batch(
+                self.recipients,
+                quota,
+                self.state,
+                self.cfg,
+                self.html_body,
+                logger,
+                progress_cb,
+            )
             self.state["last_day"] = day
             save_state(self.cfg["state_file"], self.state)
-            logger.info("=== Day %d done: sent %d, total sent %d ===", day, sent, self.state["sent_index"])
+            logger.info(
+                "=== Day %d done: sent %d, total sent %d ===",
+                day,
+                sent,
+                self.state["sent_index"],
+            )
             self.day_done.emit(day, self.state["sent_index"])
 
     # ── Help Dialog ──────────────────────────────────────────────────────
@@ -353,11 +402,15 @@ def gui_main():
             data_row = QHBoxLayout()
             data_row.addWidget(QLabel("Recipients:"))
             self.data_path = QLineEdit()
-            self.data_path.setPlaceholderText("Path to .xlsx or .csv file with email addresses…")
+            self.data_path.setPlaceholderText(
+                "Path to .xlsx or .csv file with email addresses…"
+            )
             data_row.addWidget(self.data_path, stretch=1)
             btn_data = QPushButton("Browse…")
             btn_data.setFixedWidth(100)
-            btn_data.clicked.connect(lambda: self._browse(self.data_path, "Data files (*.xlsx *.csv)"))
+            btn_data.clicked.connect(
+                lambda: self._browse(self.data_path, "Data files (*.xlsx *.csv)")
+            )
             data_row.addWidget(btn_data)
             data_body_layout.addLayout(data_row)
 
@@ -373,7 +426,9 @@ def gui_main():
             file_lo.addWidget(self.html_path, stretch=1)
             btn_html = QPushButton("Browse…")
             btn_html.setFixedWidth(100)
-            btn_html.clicked.connect(lambda: self._browse(self.html_path, "HTML files (*.html *.htm)"))
+            btn_html.clicked.connect(
+                lambda: self._browse(self.html_path, "HTML files (*.html *.htm)")
+            )
             file_lo.addWidget(btn_html)
             btn_load_body = QPushButton("Load into Editor")
             btn_load_body.clicked.connect(self._load_html_file_to_editor)
@@ -481,7 +536,9 @@ def gui_main():
 
             # ─ Log ─────────────────────────────────────────────────────────
             log_label = QLabel("Activity Log")
-            log_label.setStyleSheet("font-weight: bold; font-size: 12px; margin-top: 4px;")
+            log_label.setStyleSheet(
+                "font-weight: bold; font-size: 12px; margin-top: 4px;"
+            )
             layout.addWidget(log_label)
             self.log_output = QPlainTextEdit()
             self.log_output.setReadOnly(True)
@@ -519,13 +576,18 @@ def gui_main():
             help_menu.addAction(guide)
 
             about = QAction("About", self)
-            about.triggered.connect(lambda: QMessageBox.about(self, "About Mail Warmer",
-                f"<b>Mail Warmer v{__version__}</b><br><br>"
-                "SMTP warm-up tool — gradually send emails to build sender reputation.<br><br>"
-                "Author: Mueenul Islam<br>"
-                "Email: <a href='mailto:hello@mueen.dev'>hello@mueen.dev</a><br>"
-                "Web: <a href='https://mueen.dev'>https://mueen.dev</a><br><br>"
-                "<a href='https://github.com/mitexleo/mailwarmer'>github.com/mitexleo/mailwarmer</a>"))
+            about.triggered.connect(
+                lambda: QMessageBox.about(
+                    self,
+                    "About Mail Warmer",
+                    f"<b>Mail Warmer v{__version__}</b><br><br>"
+                    "SMTP warm-up tool — gradually send emails to build sender reputation.<br><br>"
+                    "Author: Mueenul Islam<br>"
+                    "Email: <a href='mailto:hello@mueen.dev'>hello@mueen.dev</a><br>"
+                    "Web: <a href='https://mueen.dev'>https://mueen.dev</a><br><br>"
+                    "<a href='https://github.com/mitexleo/mailwarmer'>github.com/mitexleo/mailwarmer</a>",
+                )
+            )
             help_menu.addAction(about)
 
             check = QAction("Check for Updates", self)
@@ -545,7 +607,11 @@ def gui_main():
             """Sync content when switching between File and Editor tabs."""
             if idx == 1:  # switched to Editor
                 file_path = self.html_path.text()
-                if file_path and os.path.exists(file_path) and not self.html_editor.toPlainText():
+                if (
+                    file_path
+                    and os.path.exists(file_path)
+                    and not self.html_editor.toPlainText()
+                ):
                     try:
                         self.html_editor.setPlainText(load_html_body(file_path))
                     except Exception:
@@ -554,7 +620,9 @@ def gui_main():
         def _load_html_file_to_editor(self):
             path = self.html_path.text()
             if not path or not os.path.exists(path):
-                QMessageBox.warning(self, "File not found", f"HTML file not found:\n{path}")
+                QMessageBox.warning(
+                    self, "File not found", f"HTML file not found:\n{path}"
+                )
                 return
             try:
                 content = load_html_body(path)
@@ -649,7 +717,8 @@ def gui_main():
             state = load_state(cfg["state_file"])
             if state["sent_index"] > 0:
                 reply = QMessageBox.question(
-                    self, "Resume?",
+                    self,
+                    "Resume?",
                     f"Previous progress found: {state['sent_index']} emails sent, "
                     f"last day {state['last_day']}.\n\nDo you want to resume?",
                     QMessageBox.Yes | QMessageBox.No,
@@ -686,23 +755,35 @@ def gui_main():
 
         def _start_warmup(self):
             cfg = self._build_cfg_from_ui()
-            required = {"SMTP_HOST": cfg["smtp_host"], "SMTP_USER": cfg["smtp_user"],
-                         "SMTP_PASS": cfg["smtp_pass"], "FROM_NAME": cfg["from_name"],
-                         "FROM_EMAIL": cfg["from_email"], "EMAIL_SUBJECT": cfg["email_subject"]}
+            required = {
+                "SMTP_HOST": cfg["smtp_host"],
+                "SMTP_USER": cfg["smtp_user"],
+                "SMTP_PASS": cfg["smtp_pass"],
+                "FROM_NAME": cfg["from_name"],
+                "FROM_EMAIL": cfg["from_email"],
+                "EMAIL_SUBJECT": cfg["email_subject"],
+            }
             missing = [k for k, v in required.items() if not v]
             if missing:
-                QMessageBox.warning(self, "Missing fields", f"Please fill in: {', '.join(missing)}")
+                QMessageBox.warning(
+                    self, "Missing fields", f"Please fill in: {', '.join(missing)}"
+                )
                 return
 
             data_path = self.data_path.text()
             if not data_path or not os.path.exists(data_path):
-                QMessageBox.warning(self, "File not found", f"Recipients file:\n{data_path}")
+                QMessageBox.warning(
+                    self, "File not found", f"Recipients file:\n{data_path}"
+                )
                 return
 
             html_body = self._get_html_body()
             if not html_body:
-                QMessageBox.warning(self, "Missing body",
-                    "Please provide an HTML email body (File tab or Editor tab).")
+                QMessageBox.warning(
+                    self,
+                    "Missing body",
+                    "Please provide an HTML email body (File tab or Editor tab).",
+                )
                 return
 
             try:
@@ -717,11 +798,15 @@ def gui_main():
             day = self.day_spin.value() if self.mode_day.isChecked() else None
             auto = self.mode_auto.isChecked()
 
-            self._log_msg(f"Starting warm-up — {len(recipients)} recipients, "
-                          f"{len(schedule)} days, sent so far: {state['sent_index']}")
+            self._log_msg(
+                f"Starting warm-up — {len(recipients)} recipients, "
+                f"{len(schedule)} days, sent so far: {state['sent_index']}"
+            )
 
             self.worker_thread = QThread(self)
-            self.worker = WarmupWorker(recipients, schedule, state, cfg, html_body, day, auto)
+            self.worker = WarmupWorker(
+                recipients, schedule, state, cfg, html_body, day, auto
+            )
             self.worker.moveToThread(self.worker_thread)
 
             self.worker.log_signal.connect(self._log_msg)
@@ -779,11 +864,15 @@ def gui_main():
 
         def _check_for_update(self):
             try:
-                nam = QNetworkAccessManager(self)
-                url = QUrl("https://api.github.com/repos/mitexleo/mailwarmer/releases/latest")
+                self._nam = QNetworkAccessManager(self)
+                url = QUrl(
+                    "https://api.github.com/repos/mitexleo/mailwarmer/releases/latest"
+                )
                 req = QNetworkRequest(url)
-                req.setAttribute(QNetworkRequest.User, b"MailWarmer/" + __version__.encode())
-                reply = nam.get(req)
+                req.setAttribute(
+                    QNetworkRequest.User, b"MailWarmer/" + __version__.encode()
+                )
+                reply = self._nam.get(req)
                 reply.finished.connect(lambda: self._on_update_response(reply))
             except Exception:
                 pass
@@ -799,12 +888,16 @@ def gui_main():
 
                 # Build release notes snippet
                 body = data.get("body", "")
-                release_url = data.get("html_url", "https://github.com/mitexleo/mailwarmer/releases/latest")
+                release_url = data.get(
+                    "html_url", "https://github.com/mitexleo/mailwarmer/releases/latest"
+                )
                 notes = body[:500] + ("…" if len(body) > 500 else "") if body else ""
 
                 # Detect Flatpak
-                is_flatpak = os.environ.get("FLATPAK_ID") == "io.github.mitexleo.mailwarmer" \
-                             or "/app" in __file__
+                is_flatpak = (
+                    os.environ.get("FLATPAK_ID") == "io.github.mitexleo.mailwarmer"
+                    or "/app" in __file__
+                )
 
                 msg = QMessageBox(self)
                 msg.setIcon(QMessageBox.Information)
@@ -818,8 +911,7 @@ def gui_main():
                 if notes:
                     html += f"<hr><pre style='font-size:11px;color:#666'>{notes}</pre>"
                 html += (
-                    f'<p><a href="{release_url}">'
-                    f'View full release on GitHub →</a></p>'
+                    f'<p><a href="{release_url}">View full release on GitHub →</a></p>'
                 )
                 if is_flatpak:
                     html += (
@@ -877,12 +969,10 @@ def gui_main():
         QPushButton {
             padding: 8px 20px; font-size: 13px; min-height: 24px;
             border: 1px solid #bbb; border-radius: 5px;
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #f5f5f5, stop:1 #ddd);
+            background: #f0f0f0;
         }
         QPushButton:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #fff, stop:1 #e5e5e5);
+            background: #e0e0e0;
         }
         QCheckBox, QRadioButton { font-size: 13px; spacing: 6px; }
         QStatusBar { font-size: 12px; }
@@ -910,6 +1000,7 @@ def gui_main():
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 def main():
     if "--cli" in sys.argv:
