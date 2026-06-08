@@ -809,13 +809,14 @@ def gui_main():
             )
             self.worker.moveToThread(self.worker_thread)
 
-            self.worker.log_signal.connect(self._log_msg)
-            self.worker.progress_signal.connect(self._update_progress)
-            self.worker.day_done.connect(self._on_day_done)
-            self.worker.error.connect(self._on_worker_error)
-            self.worker.finished.connect(self._on_worker_finished)
+            self.worker.log_signal.connect(self._log_msg, Qt.QueuedConnection)
+            self.worker.progress_signal.connect(
+                self._update_progress, Qt.QueuedConnection
+            )
+            self.worker.day_done.connect(self._on_day_done, Qt.QueuedConnection)
+            self.worker.error.connect(self._on_worker_error, Qt.QueuedConnection)
+            self.worker.finished.connect(self._on_worker_finished, Qt.QueuedConnection)
             self.worker_thread.started.connect(self.worker.run)
-            self.worker_thread.finished.connect(self.worker_thread.deleteLater)
 
             self.btn_start.setEnabled(False)
             self.btn_pause.setEnabled(True)
@@ -832,13 +833,16 @@ def gui_main():
             self.btn_pause.setEnabled(False)
 
         def _on_worker_finished(self):
-            self.worker_thread.quit()
-            self.worker_thread.wait()
             self.btn_start.setEnabled(True)
             self.btn_pause.setEnabled(False)
             self.progress.setVisible(False)
             self.status.showMessage("Done")
-            self._log_msg("Warm-up paused. You can resume later with Start.")
+            self._log_msg("Warm-up complete. You can resume later with Start.")
+            # Clean up thread (run() already returned, so quit() exits event loop)
+            if self.worker_thread:
+                self.worker_thread.quit()
+            self.worker = None
+            self.worker_thread = None
 
         def _on_worker_error(self, msg):
             self._log_msg(f"ERROR: {msg}")
