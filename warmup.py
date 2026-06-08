@@ -33,12 +33,15 @@ from warmup_core import (
 
 
 def _settings_path():
-    """Return path to the app settings JSON file."""
-    if getattr(sys, "frozen", False):
-        base = os.path.dirname(sys.executable)
-    else:
-        base = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base, "warmup_settings.json")
+    """Return path to the app settings JSON file.
+    Uses XDG config home so it works in both normal and Flatpak environments.
+    """
+    config_home = os.environ.get(
+        "XDG_CONFIG_HOME", os.path.join(os.path.expanduser("~"), ".config")
+    )
+    app_dir = os.path.join(config_home, "mailwarmer")
+    os.makedirs(app_dir, exist_ok=True)
+    return os.path.join(app_dir, "warmup_settings.json")
 
 
 def _save_settings(data):
