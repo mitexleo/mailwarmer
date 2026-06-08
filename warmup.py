@@ -195,6 +195,9 @@ def gui_main():
         def run(self):
             logger = logging.getLogger("warmup.worker")
             logger.setLevel(logging.INFO)
+            # Clear old handlers to prevent accumulation across runs
+            logger.handlers.clear()
+
             gui_handler = QtLogHandler(LogSignal())
             gui_handler.signal.message.connect(self._log)
             gui_handler.setFormatter(
@@ -238,6 +241,7 @@ def gui_main():
             except Exception as e:
                 self.error.emit(str(e))
             finally:
+                logger.handlers.clear()
                 self.finished.emit()
 
         def _run_day(self, day, logger, progress_cb):
@@ -841,9 +845,10 @@ def gui_main():
             self.progress.setVisible(False)
             self.status.showMessage("Done")
             self._log_msg("Warm-up complete. You can resume later with Start.")
-            # Clean up thread (run() already returned, so quit() exits event loop)
+            # Safely clean up thread and worker
             if self.worker_thread:
                 self.worker_thread.quit()
+                self.worker_thread.wait(1000)
             self.worker = None
             self.worker_thread = None
 
