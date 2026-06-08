@@ -468,9 +468,9 @@ def gui_main():
             body_tabs.addTab(editor_tab, "✏️ Editor")
 
             body_tabs.currentChanged.connect(self._on_body_tab_changed)
-            body_tabs.setMinimumHeight(140)
-            data_body_layout.addWidget(body_tabs)
-            layout.addWidget(data_body_group)
+            body_tabs.setMinimumHeight(200)
+            data_body_layout.addWidget(body_tabs, stretch=1)
+            layout.addWidget(data_body_group, stretch=2)
 
             # ─ Schedule ──────────────────────────────────────────────────────
             sched_group = QGroupBox("Schedule Controls")
@@ -557,7 +557,7 @@ def gui_main():
             self.log_output = QPlainTextEdit()
             self.log_output.setReadOnly(True)
             self.log_output.setMaximumBlockCount(5000)
-            self.log_output.setMinimumHeight(120)
+            self.log_output.setMinimumHeight(80)
             layout.addWidget(self.log_output, stretch=1)
 
             # ─ Progress & Status ─
