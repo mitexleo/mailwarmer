@@ -125,6 +125,7 @@ def gui_main():
         QDialog,
         QFileDialog,
         QFormLayout,
+        QGridLayout,
         QGroupBox,
         QHBoxLayout,
         QLabel,
