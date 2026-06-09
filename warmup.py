@@ -173,6 +173,7 @@ def gui_main():
         def __init__(self):
             super().__init__()
             self._stop = False
+            self._busy = False
 
         def start(
             self, recipients, schedule, state, cfg, html_body, day=None, auto=False
@@ -198,6 +199,7 @@ def gui_main():
 
         @Slot()
         def run(self):
+            self._busy = True
             logger = logging.getLogger("warmup.worker")
             logger.setLevel(logging.INFO)
             # Clear old handlers to prevent accumulation across runs
@@ -244,9 +246,11 @@ def gui_main():
                                     break
                                 time.sleep(1)
             except Exception as e:
+                self._error_msg = str(e)
                 self.error.emit(str(e))
             finally:
                 logger.handlers.clear()
+                self._busy = False
                 self.finished.emit()
 
         def _run_day(self, day, logger, progress_cb):
@@ -788,7 +792,7 @@ def gui_main():
 
         def _start_warmup(self):
             # Guard: don't start if worker is already busy
-            if self.worker and self.worker._stop is False:
+            if self.worker and self.worker._busy:
                 self._log_msg("Already running — wait for completion.")
                 return
 
