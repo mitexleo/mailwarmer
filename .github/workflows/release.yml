@@ -149,6 +149,41 @@ jobs:
           files: dist\warmup.exe
           tag_name: ${{ github.ref_name }}
 
+  macos:
+    name: Build macOS app
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          pip install pyinstaller openpyxl python-dotenv PySide6
+
+      - name: Build .app bundle with PyInstaller
+        run: |
+          pyinstaller --onefile --windowed --name warmup warmup.py warmup_core.py
+
+      - name: Create ZIP with .app
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd dist
+          zip -r "../warmup-$VERSION-macos.zip" warmup.app
+          cd ..
+
+      - name: Upload ZIP to Release
+        uses: softprops/action-gh-release@v2
+        if: always()
+        with:
+          files: warmup-*.zip
+          tag_name: ${{ github.ref_name }}
+
   flatpak:
     name: Build Flatpak
     runs-on: ubuntu-latest
