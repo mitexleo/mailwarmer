@@ -787,6 +787,11 @@ def gui_main():
             }
 
         def _start_warmup(self):
+            # Guard: don't start if worker is already busy
+            if self.worker and self.worker._stop is False:
+                self._log_msg("Already running — wait for completion.")
+                return
+
             cfg = self._build_cfg_from_ui()
             required = {
                 "SMTP_HOST": cfg["smtp_host"],
@@ -960,6 +965,27 @@ def gui_main():
     # ── Launch ──────────────────────────────────────────────────────────
 
     app = QApplication(sys.argv)
+
+    # Catch unhandled exceptions and show them instead of crashing
+    import traceback
+
+    def excepthook(exc_type, exc_value, exc_tb):
+        msg = "Unhandled exception:\n" + "".join(
+            traceback.format_exception(exc_type, exc_value, exc_tb)
+        )
+        try:
+            from PySide6.QtWidgets import QMessageBox
+
+            error_dialog = QMessageBox()
+            error_dialog.setIcon(QMessageBox.Critical)
+            error_dialog.setWindowTitle("Error")
+            error_dialog.setText("An unexpected error occurred.")
+            error_dialog.setDetailedText(msg)
+            error_dialog.exec()
+        except Exception:
+            print(msg, file=sys.stderr)
+
+    sys.excepthook = excepthook
 
     # Use Fusion style for consistent cross-platform look
     app.setStyle("Fusion")
