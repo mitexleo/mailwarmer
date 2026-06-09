@@ -115,7 +115,6 @@ jobs:
           files: |
             warmup_*.deb
             warmup*.rpm
-            warmup-*.zip
           generate_release_notes: true
 
   windows:
@@ -143,16 +142,11 @@ jobs:
         run: |
           .\dist\warmup.exe --cli --help
 
-      - name: Package as ZIP
-        run: |
-          $version = "$env:GITHUB_REF_NAME" -replace "^v", ""
-          Compress-Archive -Path .\dist\warmup.exe -DestinationPath "warmup-$version-windows-x64.zip"
-
-      - name: Upload ZIP to Release
+      - name: Upload executable to Release
         uses: softprops/action-gh-release@v2
         if: always()
         with:
-          files: warmup-*.zip
+          files: dist\warmup.exe
           tag_name: ${{ github.ref_name }}
 
   flatpak:
