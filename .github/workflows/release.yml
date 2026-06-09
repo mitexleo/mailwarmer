@@ -170,18 +170,26 @@ jobs:
         run: |
           pyinstaller --onefile --windowed --name warmup warmup.py warmup_core.py
 
-      - name: Create ZIP with .app
+      - name: Create .dmg with create-dmg
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          cd dist
-          zip -r "../warmup-$VERSION-macos.zip" warmup.app
-          cd ..
+          brew install create-dmg
+          create-dmg \
+            --volname "Mail Warmer $VERSION" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 80 \
+            --icon "warmup.app" 150 200 \
+            --hide-extension "warmup.app" \
+            --app-drop-link 450 200 \
+            "warmup-$VERSION.dmg" \
+            "dist/warmup.app"
 
-      - name: Upload ZIP to Release
+      - name: Upload .dmg to Release
         uses: softprops/action-gh-release@v2
         if: always()
         with:
-          files: warmup-*.zip
+          files: warmup-*.dmg
           tag_name: ${{ github.ref_name }}
 
   flatpak:
