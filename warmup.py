@@ -119,7 +119,7 @@ def cli_main():
 def gui_main():
     """Launch the Qt GUI application."""
     # Deferred imports so --cli doesn't need Qt
-    from PySide6.QtCore import QObject, Qt, QThread, QUrl, Signal, Slot
+    from PySide6.QtCore import QMetaObject, QObject, Qt, QThread, QUrl, Signal, Slot
     from PySide6.QtGui import QAction, QDesktopServices, QIcon, QTextCursor
     from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
     from PySide6.QtWidgets import (
@@ -170,10 +170,14 @@ def gui_main():
         finished = Signal()
         error = Signal(str)
 
-        def __init__(
+        def __init__(self):
+            super().__init__()
+            self._stop = False
+
+        def start(
             self, recipients, schedule, state, cfg, html_body, day=None, auto=False
         ):
-            super().__init__()
+            """Store parameters for the next run()."""
             self.recipients = recipients
             self.schedule = schedule
             self.state = state
@@ -192,6 +196,7 @@ def gui_main():
         def _progress(self, current, total):
             self.progress_signal.emit(current, total)
 
+        @Slot()
         def run(self):
             logger = logging.getLogger("warmup.worker")
             logger.setLevel(logging.INFO)
@@ -308,8 +313,6 @@ def gui_main():
     class MainWindow(QMainWindow):
         def __init__(self):
             super().__init__()
-            self.worker = None
-            self.worker_thread = None
             self.html_editor_content = ""  # holds editor tab HTML
 
             self.setWindowTitle(f"Mail Warmer v{__version__}")
@@ -317,9 +320,32 @@ def gui_main():
 
             self._build_ui()
             self._build_menu()
+
+            # Create worker + thread once and reuse them
+            self.worker_thread = QThread(self)
+            self.worker = WarmupWorker()
+            self.worker.moveToThread(self.worker_thread)
+            self.worker.log_signal.connect(self._log_msg, Qt.QueuedConnection)
+            self.worker.progress_signal.connect(
+                self._update_progress, Qt.QueuedConnection
+            )
+            self.worker.day_done.connect(self._on_day_done, Qt.QueuedConnection)
+            self.worker.error.connect(self._on_worker_error, Qt.QueuedConnection)
+            self.worker.finished.connect(self._on_worker_finished, Qt.QueuedConnection)
+            self.worker_thread.start()
+
             self._load_settings_into_ui()
             self._check_for_update()
             self._prompt_resume()
+
+        def closeEvent(self, event):
+            """Clean up worker thread when window closes."""
+            if self.worker:
+                self.worker.stop()
+            if self.worker_thread:
+                self.worker_thread.quit()
+                self.worker_thread.wait(2000)
+            event.accept()
 
         # ── UI ────────────────────────────────────────────────────────
 
@@ -810,28 +836,14 @@ def gui_main():
                 f"{len(schedule)} days, sent so far: {state['sent_index']}"
             )
 
-            self.worker_thread = QThread(self)
-            self.worker = WarmupWorker(
-                recipients, schedule, state, cfg, html_body, day, auto
-            )
-            self.worker.moveToThread(self.worker_thread)
-
-            self.worker.log_signal.connect(self._log_msg, Qt.QueuedConnection)
-            self.worker.progress_signal.connect(
-                self._update_progress, Qt.QueuedConnection
-            )
-            self.worker.day_done.connect(self._on_day_done, Qt.QueuedConnection)
-            self.worker.error.connect(self._on_worker_error, Qt.QueuedConnection)
-            self.worker.finished.connect(self._on_worker_finished, Qt.QueuedConnection)
-            self.worker_thread.started.connect(self.worker.run)
+            self.worker.start(recipients, schedule, state, cfg, html_body, day, auto)
+            QMetaObject.invokeMethod(self.worker, "run", Qt.QueuedConnection)
 
             self.btn_start.setEnabled(False)
             self.btn_pause.setEnabled(True)
             self.progress.setVisible(True)
             self.progress.setValue(0)
             self.status.showMessage("Running…")
-
-            self.worker_thread.start()
 
         def _pause_warmup(self):
             if self.worker:
@@ -844,13 +856,7 @@ def gui_main():
             self.btn_pause.setEnabled(False)
             self.progress.setVisible(False)
             self.status.showMessage("Done")
-            self._log_msg("Warm-up complete. You can resume later with Start.")
-            # Safely clean up thread and worker
-            if self.worker_thread:
-                self.worker_thread.quit()
-                self.worker_thread.wait(1000)
-            self.worker = None
-            self.worker_thread = None
+            self._log_msg("Warm-up complete. Click Start again to run another day.")
 
         def _on_worker_error(self, msg):
             self._log_msg(f"ERROR: {msg}")
