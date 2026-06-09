@@ -868,7 +868,9 @@ def gui_main():
             self.btn_pause.setEnabled(True)
             self.progress.setVisible(True)
             self.progress.setValue(0)
+            self.progress.setMaximum(100)
             self.status.showMessage("Running…")
+            QApplication.processEvents()
 
         def _pause_warmup(self):
             if self.worker:

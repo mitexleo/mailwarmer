@@ -28,26 +28,34 @@ __version__ = "1.3.3"
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
+
 def load_config(env_path):
     """Load .env file and return a config dict."""
     load_dotenv(dotenv_path=env_path, override=True)
 
     cfg = {
-        "smtp_host":      os.getenv("SMTP_HOST"),
-        "smtp_port":      int(os.getenv("SMTP_PORT", "25")),
-        "smtp_user":      os.getenv("SMTP_USER"),
-        "smtp_pass":      os.getenv("SMTP_PASS"),
-        "use_tls":        os.getenv("USE_TLS", "false").lower() == "true",
-        "from_name":      os.getenv("FROM_NAME"),
-        "from_email":     os.getenv("FROM_EMAIL"),
-        "email_subject":  os.getenv("EMAIL_SUBJECT"),
-        "warmup_days":    int(os.getenv("WARMUP_DAYS", "14")),
-        "delay_emails":   int(os.getenv("DELAY_BETWEEN_EMAILS", "10")),
-        "delay_days":     int(os.getenv("DELAY_BETWEEN_DAYS", "86400")),
-        "state_file":     os.getenv("STATE_FILE", "warmup_state.json"),
+        "smtp_host": os.getenv("SMTP_HOST"),
+        "smtp_port": int(os.getenv("SMTP_PORT", "25")),
+        "smtp_user": os.getenv("SMTP_USER"),
+        "smtp_pass": os.getenv("SMTP_PASS"),
+        "use_tls": os.getenv("USE_TLS", "false").lower() == "true",
+        "from_name": os.getenv("FROM_NAME"),
+        "from_email": os.getenv("FROM_EMAIL"),
+        "email_subject": os.getenv("EMAIL_SUBJECT"),
+        "warmup_days": int(os.getenv("WARMUP_DAYS", "14")),
+        "delay_emails": int(os.getenv("DELAY_BETWEEN_EMAILS", "10")),
+        "delay_days": int(os.getenv("DELAY_BETWEEN_DAYS", "86400")),
+        "state_file": os.getenv("STATE_FILE", "warmup_state.json"),
     }
 
-    required = ["smtp_host", "smtp_user", "smtp_pass", "from_name", "from_email", "email_subject"]
+    required = [
+        "smtp_host",
+        "smtp_user",
+        "smtp_pass",
+        "from_name",
+        "from_email",
+        "email_subject",
+    ]
     missing = [k.upper() for k in required if not cfg[k]]
     if missing:
         raise ValueError(f"Missing required env vars: {', '.join(missing)}")
@@ -56,6 +64,7 @@ def load_config(env_path):
 
 
 # ── Recipients ────────────────────────────────────────────────────────────────
+
 
 def load_recipients(path):
     """Load email addresses from an XLSX or CSV file (first column)."""
@@ -66,7 +75,9 @@ def load_recipients(path):
 
     if ext == ".xlsx":
         if load_workbook is None:
-            raise ImportError("openpyxl is required for .xlsx files — pip install openpyxl")
+            raise ImportError(
+                "openpyxl is required for .xlsx files — pip install openpyxl"
+            )
         wb = load_workbook(path, read_only=True)
         ws = wb.active
         return [str(row[0]).strip() for row in ws.iter_rows(values_only=True) if row[0]]
@@ -86,6 +97,7 @@ def load_recipients(path):
 
 # ── HTML ──────────────────────────────────────────────────────────────────────
 
+
 def load_html_body(path):
     """Read and return the HTML email body from a file."""
     if not os.path.exists(path):
@@ -96,27 +108,37 @@ def load_html_body(path):
 
 # ── Schedule ──────────────────────────────────────────────────────────────────
 
+
 def build_schedule(total, days):
-    """Generate a gradual ramp-up schedule over N days."""
+    """Generate a gradual quadratic-ramp schedule over N days.
+
+    Day N gets roughly N² / sum-of-squares of the total, producing
+    a slow start that accelerates.  Every day gets at least 1 email.
+    """
     if days <= 0 or total <= 0:
         return {}
 
+    # Quadratic weights: day 1→1, day 2→4, day 3→9 …
+    weights = [d * d for d in range(1, days + 1)]
+    weight_sum = sum(weights)
+
     schedule = {}
+    allocated = 0
     for d in range(1, days + 1):
         if d == days:
-            already = sum(schedule.values())
-            schedule[d] = total - already
+            schedule[d] = total - allocated
         else:
-            ratio = d / days
-            raw = max(1, round(total * ratio * (2 / (days + 1)) * d))
-            already = sum(schedule.values())
-            remaining = total - already
-            schedule[d] = min(raw, remaining)
+            raw = round(total * weights[d - 1] / weight_sum)
+            # ensure at least 1, and leave at least 1 for every remaining day
+            quota = max(1, min(raw, total - allocated - (days - d)))
+            schedule[d] = quota
+            allocated += quota
 
-    return {d: q for d, q in schedule.items() if q > 0}
+    return schedule
 
 
 # ── State ─────────────────────────────────────────────────────────────────────
+
 
 def load_state(path):
     if os.path.exists(path):
@@ -132,10 +154,11 @@ def save_state(path, state):
 
 # ── Sender ────────────────────────────────────────────────────────────────────
 
+
 def build_message(to_email, cfg, html_body):
     msg = MIMEMultipart("alternative")
     msg["Subject"] = cfg["email_subject"]
-    msg["From"] = f'{cfg["from_name"]} <{cfg["from_email"]}>'
+    msg["From"] = f"{cfg['from_name']} <{cfg['from_email']}>"
     msg["To"] = to_email
     msg.attach(MIMEText(html_body, "html"))
     return msg
@@ -148,7 +171,7 @@ def send_batch(recipients, count, state, cfg, html_body, log, progress_callback=
     Returns the number of successfully sent emails.
     """
     start = state["sent_index"]
-    batch = recipients[start:start + count]
+    batch = recipients[start : start + count]
     total_in_batch = len(batch)
 
     if not batch:
