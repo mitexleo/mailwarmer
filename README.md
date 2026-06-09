@@ -1,24 +1,27 @@
 # Mail Warmer
 
-A desktop GUI (Qt) tool for SMTP warm-up — gradually sends emails to a list of
-recipients over multiple days to build sender reputation.
+A desktop GUI (Qt6 / PySide6) tool for SMTP warm-up — gradually sends emails
+to a list of recipients over multiple days to build sender reputation.
+
+**Author:** Mueenul Islam — [hello@mueen.dev](mailto:hello@mueen.dev) — [https://mueen.dev](https://mueen.dev)
 
 ## Features
 
-- **Qt GUI** — configure everything visually, no CLI needed
-- **SMTP config** — host, port, user, pass, TLS toggle — enter directly in the app
-- **Save/Load Config** — persist SMTP settings between sessions
-- **Email body editor** — write or paste HTML directly, or load from a file
-- **Recipients file** — browse for `.xlsx` or `.csv`
-- **Auto-generated schedule** — distributes recipients across N days with gradual ramp-up
-- **Single day or auto mode** — run one day or chain all days automatically
-- **Pause/Resume** — state is saved after every email; close and resume later
-- **Live log & progress bar** — see sends in real time
-- **Self-update check** — notifies when a new release is available
-- **Help guide** — built-in usage documentation
-- **CLI fallback** — still works headless with `--cli` flag
+- **Qt6 GUI** — configure everything visually, no CLI required  
+- **Dark theme** — consistent Fusion style across all platforms  
+- **SMTP config** — host, port, user, password, TLS toggle — enter directly in the app  
+- **Save / Load config** — settings persist to `~/.config/mailwarmer/` across sessions  
+- **HTML email editor** — write or paste HTML directly in the Editor tab, or load from a file  
+- **Recipients file** — browse for `.xlsx` or `.csv` (first column, one email per row)  
+- **Auto-generated schedule** — distributes recipients across N days with gradual ramp-up  
+- **Single day or auto mode** — run one day or chain all days automatically  
+- **Pause / Resume** — state is saved after every email; close and resume later  
+- **Live log & progress bar** — see sends in real time  
+- **Self-update check** — notifies when a new release is available (with Download button)  
+- **Flatpak support** — install, run, and update via Flatpak  
+- **CLI fallback** — headless mode with `--cli` flag  
 
-## Quick Start
+## Quick Start (from source)
 
 ```bash
 pip install PySide6 openpyxl python-dotenv
@@ -28,6 +31,34 @@ cp .env.example .env
 
 python3 warmup.py
 ```
+
+## Install via Flatpak
+
+Download the latest `.flatpak` from the [Releases page](https://github.com/mitexleo/mailwarmer/releases).
+
+```bash
+flatpak install --user mailwarmer.flatpak
+flatpak run io.github.mitexleo.mailwarmer
+```
+
+To update:
+```bash
+flatpak update io.github.mitexleo.mailwarmer
+```
+
+## Install via .deb / .rpm
+
+Download from the [Releases page](https://github.com/mitexleo/mailwarmer/releases).
+
+```bash
+# Debian / Ubuntu
+sudo dpkg -i warmup_1.4.4_amd64.deb
+
+# RHEL / Fedora / CentOS
+sudo rpm -i warmup-1.4.4-1.x86_64.rpm
+```
+
+Installed to `/usr/local/bin/warmup`.
 
 ## CLI Usage
 
@@ -80,19 +111,14 @@ pyinstaller --onefile --name warmup warmup.py warmup_core.py
 ./dist/warmup
 ```
 
-## Install from Packages
+## Project Structure
 
-Download `.deb` or `.rpm` from the [Releases page](https://github.com/mitexleo/mailwarmer/releases).
-
-```bash
-# Debian / Ubuntu
-sudo dpkg -i warmup_*.deb
-
-# RHEL / Fedora / CentOS
-sudo rpm -i warmup_*.rpm
 ```
-
-Installed to `/usr/local/bin/warmup`.
+warmup.py          — Qt GUI application (+ CLI fallback with --cli)
+warmup_core.py     — shared SMTP logic (config, send, schedule, state)
+flatpak/           — Flatpak packaging files
+.github/workflows/ — CI pipeline (.deb, .rpm, .flatpak)
+```
 
 ## AI Usage Disclosure
 
@@ -105,6 +131,7 @@ include:
 - GitHub Actions CI/CD pipeline for cross-platform packaging
 - Self-update check functionality
 - Help system and documentation
+- Flatpak packaging support
 
 All AI-generated code was reviewed, tested, and validated by the author before
 inclusion. The author takes full responsibility for the project's functionality
