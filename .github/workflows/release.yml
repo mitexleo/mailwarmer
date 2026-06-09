@@ -115,7 +115,45 @@ jobs:
           files: |
             warmup_*.deb
             warmup*.rpm
+            warmup-*.zip
           generate_release_notes: true
+
+  windows:
+    name: Build Windows executable
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          pip install pyinstaller openpyxl python-dotenv PySide6
+
+      - name: Build standalone executable with PyInstaller
+        run: |
+          pyinstaller --onefile --name warmup --noconsole warmup.py warmup_core.py
+
+      - name: Smoke test
+        run: |
+          .\dist\warmup.exe --cli --help
+
+      - name: Package as ZIP
+        run: |
+          $version = "$env:GITHUB_REF_NAME" -replace "^v", ""
+          Compress-Archive -Path .\dist\warmup.exe -DestinationPath "warmup-$version-windows-x64.zip"
+
+      - name: Upload ZIP to Release
+        uses: softprops/action-gh-release@v2
+        if: always()
+        with:
+          files: warmup-*.zip
+          tag_name: ${{ github.ref_name }}
 
   flatpak:
     name: Build Flatpak
