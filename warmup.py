@@ -343,7 +343,14 @@ def gui_main():
             self._prompt_resume()
 
         def closeEvent(self, event):
-            """Clean up worker thread when window closes."""
+            """Save config and clean up worker thread when window closes."""
+            # Save HTML editor content to settings so it persists
+            html_content = self.html_editor.toPlainText()
+            if html_content:
+                data = _load_settings()
+                data["html_editor_content"] = html_content
+                _save_settings(data)
+            self._save_config(silent=True)
             if self.worker:
                 self.worker.stop()
             if self.worker_thread:
@@ -680,7 +687,7 @@ def gui_main():
 
         # ── Settings persistence ────────────────────────────────────────
 
-        def _save_config(self):
+        def _save_config(self, silent=False):
             data = {
                 "smtp_host": self.smtp_host.text(),
                 "smtp_port": self.smtp_port.value(),
@@ -697,8 +704,9 @@ def gui_main():
                 "html_path": self.html_path.text(),
             }
             _save_settings(data)
-            self._log_msg("Config saved ✓")
-            self.status.showMessage("Config saved ✓")
+            if not silent:
+                self._log_msg("Config saved ✓")
+                self.status.showMessage("Config saved ✓")
 
         def _load_settings_into_ui(self):
             data = _load_settings()
@@ -717,6 +725,11 @@ def gui_main():
             self.delay_day.setValue(data.get("delay_days", 86400))
             self.data_path.setText(data.get("data_path", ""))
             self.html_path.setText(data.get("html_path", ""))
+            # Restore saved HTML editor content
+            saved_html = data.get("html_editor_content", "")
+            if saved_html:
+                self.html_editor.setPlainText(saved_html)
+                self.body_tabs.setCurrentIndex(1)
             self._log_msg("Settings restored from last session ✓")
 
         # ── Load .env into UI ──────────────────────────────────────────
@@ -844,6 +857,9 @@ def gui_main():
                 f"Starting warm-up — {len(recipients)} recipients, "
                 f"{len(schedule)} days, sent so far: {state['sent_index']}"
             )
+
+            # Auto-save config so file paths persist for next session
+            self._save_config(silent=True)
 
             self.worker.start(recipients, schedule, state, cfg, html_body, day, auto)
             QMetaObject.invokeMethod(self.worker, "run", Qt.QueuedConnection)
