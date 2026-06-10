@@ -150,7 +150,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
 
   macos:
-    name: Build macOS app
+    name: Build macOS .dmg
     runs-on: macos-latest
 
     steps:
@@ -166,30 +166,19 @@ jobs:
         run: |
           pip install pyinstaller openpyxl python-dotenv PySide6
 
-      - name: Build .app bundle with PyInstaller
-        run: |
-          pyinstaller --onefile --windowed --name warmup warmup.py warmup_core.py
+      - name: Install create-dmg
+        run: brew install create-dmg
 
-      - name: Create .dmg with create-dmg
+      - name: Build .app and .dmg
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          brew install create-dmg
-          create-dmg \
-            --volname "Mail Warmer $VERSION" \
-            --window-pos 200 120 \
-            --window-size 600 400 \
-            --icon-size 80 \
-            --icon "warmup.app" 150 200 \
-            --hide-extension "warmup.app" \
-            --app-drop-link 450 200 \
-            "warmup-$VERSION.dmg" \
-            "dist/warmup.app"
+          chmod +x build_mac.sh
+          ./build_mac.sh
 
       - name: Upload .dmg to Release
         uses: softprops/action-gh-release@v2
         if: always()
         with:
-          files: warmup-*.dmg
+          files: MailWarmer-*.dmg
           tag_name: ${{ github.ref_name }}
 
   flatpak:

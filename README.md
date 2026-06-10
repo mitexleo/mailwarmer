@@ -60,6 +60,19 @@ sudo rpm -i warmup-1.4.4-1.x86_64.rpm
 
 Installed to `/usr/local/bin/warmup`.
 
+## Direct Download
+
+| File | Platform | Installation |
+|------|----------|--------------|
+| `warmup.exe` | Windows | Download and run the executable |
+| `MailWarmer-1.5.6.dmg` | macOS | Download, open DMG, drag `MailWarmer.app` to Applications |
+
+### macOS Notes
+
+- **First launch:** Right-click `MailWarmer.app` → Open (instead of double-click) to bypass Gatekeeper for unsigned apps.
+- **Apple Silicon (M1/M2/M3):** The app is built as a universal binary (`x86_64` + `arm64`) and runs natively.
+- **Code signing:** For distribution without the security warning, an Apple Developer ID ($99/year) is required for full notarization. Until then, the app is ad-hoc signed for testing.
+
 ## CLI Usage
 
 ```bash
