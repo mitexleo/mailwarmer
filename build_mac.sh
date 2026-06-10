@@ -44,9 +44,14 @@ with open('assets/icon_1024.png', 'wb') as f:
     rm -rf MailWarmer.iconset assets/icon_1024.png
 fi
 
-# 3. Build .app with PyInstaller
+# 3. Build .app with PyInstaller (CLI, no spec file — BUNDLE removed in PyInstaller 6.x)
 echo "Running PyInstaller..."
-pyinstaller --clean mailwarmer.spec --noconfirm
+pyinstaller --clean \
+    --onefile --windowed \
+    --name "MailWarmer" \
+    --icon "assets/icon.icns" \
+    --osx-bundle-identifier "dev.mueen.mailwarmer" \
+    warmup.py warmup_core.py
 
 # 4. Ad-hoc code sign (required for Apple Silicon to run without terminal)
 echo "Code signing..."
