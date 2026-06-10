@@ -415,6 +415,7 @@ def gui_main():
             self.smtp_port = QSpinBox()
             self.smtp_port.setRange(1, 65535)
             self.smtp_port.setValue(25)
+            # setFixedWidth is fine here — small spinbox widgets are not clipped on Retina
             self.smtp_port.setFixedWidth(80)
             self.smtp_port.setFixedHeight(32)
             smtp_grid.addWidget(self.smtp_port, 0, 3)
@@ -1089,6 +1090,12 @@ def gui_main():
 
     # ── Launch ──────────────────────────────────────────────────────────
 
+    import platform
+
+    if platform.system() == "Darwin":
+        # Fix layer-backed rendering on macOS 11+
+        os.environ["QT_MAC_WANTS_LAYER"] = "1"
+
     app = QApplication(sys.argv)
 
     # Catch unhandled exceptions and show them instead of crashing
@@ -1111,6 +1118,88 @@ def gui_main():
             print(msg, file=sys.stderr)
 
     sys.excepthook = excepthook
+
+    if platform.system() == "Darwin":
+        # Remove scrollbar QSS overrides on macOS (they cause rendering glitches)
+        # macOS uses overlay scrollbars that are ignored by QSS
+        app.setStyleSheet("""
+            QGroupBox {
+                color: #f0f0f0; font-weight: bold; font-size: 13px;
+                border: 1px solid #606060; border-radius: 6px;
+                margin-top: 8px; padding: 8px;
+            }
+            QGroupBox::title {
+                color: #cccccc;
+                subcontrol-origin: margin; subcontrol-position: top left;
+                left: 8px; padding: 0 4px;
+            }
+            QLineEdit, QTextEdit, QPlainTextEdit {
+                background-color: #2b2b2b; color: #f0f0f0;
+                border: 1px solid #555; border-radius: 4px;
+                padding: 4px 6px; font-size: 13px;
+            }
+            QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus { border-color: #4a9eff; }
+            QSpinBox {
+                background-color: #2b2b2b; color: #f0f0f0;
+                border: 1px solid #555; border-radius: 4px;
+                padding: 2px 4px; font-size: 13px;
+            }
+            QSpinBox:focus { border-color: #4a9eff; }
+            QSpinBox::up-button, QSpinBox::down-button {
+                background-color: #3c3f41; border: 1px solid #555;
+                border-radius: 2px; width: 18px;
+            }
+            QSpinBox::up-arrow, QSpinBox::down-arrow { width: 8px; height: 8px; }
+            QSpinBox::up-arrow:hover, QSpinBox::down-arrow:hover { background: #555; }
+            QPushButton {
+                background-color: #3c3f41; color: #f0f0f0;
+                border: 1px solid #555; border-radius: 4px;
+                padding: 5px 12px; font-size: 13px;
+            }
+            QPushButton:hover { background-color: #4c5052; }
+            QPushButton:pressed { background-color: #2b2b2b; }
+            QPushButton:disabled { color: #666; background-color: #333; }
+            QPushButton#btnStart {
+                background-color: #2e7d32; color: white;
+                font-weight: bold; font-size: 14px;
+                border: none; border-radius: 6px;
+            }
+            QPushButton#btnStart:hover { background-color: #388e3c; }
+            QPushButton#btnStart:disabled { background-color: #1b5e20; color: #888; }
+            QPushButton#btnPause {
+                background-color: #e65100; color: white;
+                font-weight: bold; font-size: 14px;
+                border: none; border-radius: 6px;
+            }
+            QPushButton#btnPause:hover { background-color: #ef6c00; }
+            QPushButton#btnPause:disabled { background-color: #bf360c; color: #888; }
+            QCheckBox { color: #f0f0f0; spacing: 6px; }
+            QCheckBox::indicator {
+                background-color: #2b2b2b; border: 1px solid #555;
+                border-radius: 3px; width: 14px; height: 14px;
+            }
+            QCheckBox::indicator:checked { background-color: #4a9eff; border-color: #4a9eff; }
+            QCheckBox::indicator:hover { border-color: #888; }
+            QRadioButton { color: #f0f0f0; spacing: 6px; }
+            QRadioButton::indicator { width: 14px; height: 14px; }
+            QLabel { color: #f0f0f0; }
+            QStatusBar { font-size: 12px; color: #aaa; background-color: #2b2b2b; }
+            QTabWidget::pane { border: 1px solid #555; border-radius: 5px; padding: 6px; background-color: #3c3f41; }
+            QTabBar::tab {
+                padding: 6px 16px; font-size: 12px;
+                border: 1px solid #555; border-bottom: none;
+                border-top-left-radius: 4px; border-top-right-radius: 4px;
+                margin-right: 2px; background-color: #2b2b2b; color: #aaa;
+            }
+            QTabBar::tab:selected { background-color: #3c3f41; font-weight: bold; color: #fff; }
+            QTabBar::tab:!selected:hover { background-color: #333; }
+            QProgressBar { border: 1px solid #555; border-radius: 4px; text-align: center; background-color: #2b2b2b; color: #f0f0f0; font-size: 11px; }
+            QProgressBar::chunk { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #2e7d32, stop:1 #66bb6a); border-radius: 3px; }
+            QMenuBar { background-color: #3c3f41; color: #f0f0f0; }
+            QMenuBar::item:selected { background-color: #4c5052; }
+            QMenu { background-color: #3c3f41; color: #f0f0f0; border: 1px solid #555; }
+            QMenu::item:selected { background-color: #4a9eff; }
+        """)
 
     # Use Fusion style for consistent cross-platform look
     app.setStyle("Fusion")
