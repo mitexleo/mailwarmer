@@ -13,6 +13,7 @@ import logging
 import os
 import sys
 import time
+from datetime import datetime
 
 from warmup_core import (
     __version__,
@@ -166,7 +167,7 @@ def gui_main():
     class WarmupWorker(QObject):
         log_signal = Signal(str)
         progress_signal = Signal(int, int)
-        day_done = Signal(int, int)
+        day_done = Signal(int, int, int, int)
         finished = Signal()
         error = Signal(str)
 
@@ -276,7 +277,9 @@ def gui_main():
                 sent,
                 self.state["sent_index"],
             )
-            self.day_done.emit(day, self.state["sent_index"])
+            self.day_done.emit(
+                day, sent, self.state["sent_index"], len(self.recipients)
+            )
 
     # ── Help Dialog ──────────────────────────────────────────────────────
 
@@ -661,6 +664,12 @@ def gui_main():
             outer_layout.addWidget(self.log_output)
 
             # ─ Progress ─
+            self.progress_label = QLabel("Campaign Progress: 0 / 0 emails sent")
+            self.progress_label.setVisible(False)
+            self.progress_label.setStyleSheet(
+                "font-size: 11px; color: #aaa; margin-top: 2px;"
+            )
+            outer_layout.addWidget(self.progress_label)
             self.progress = QProgressBar()
             self.progress.setVisible(False)
             self.progress.setFixedHeight(24)
@@ -686,10 +695,24 @@ def gui_main():
             self.btn_pause.setEnabled(False)
             self.btn_pause.clicked.connect(self._pause_warmup)
 
+            self.btn_stop = QPushButton("■  Stop")
+            self.btn_stop.setObjectName("btnStop")
+            self.btn_stop.setMinimumSize(120, 40)
+            self.btn_stop.setEnabled(False)
+            self.btn_stop.clicked.connect(self._stop_warmup)
+            self.btn_stop.setStyleSheet(
+                "QPushButton#btnStop { background-color: #c0392b; color: white; "
+                "font-weight: bold; font-size: 13px; border: none; border-radius: 6px; }"
+                "QPushButton#btnStop:hover { background-color: #e74c3c; }"
+                "QPushButton#btnStop:disabled { background-color: #7f3f3a; color: #888; }"
+            )
+
             bottom_lo.addStretch()
             bottom_lo.addWidget(self.btn_start)
-            bottom_lo.addSpacing(12)
+            bottom_lo.addSpacing(8)
             bottom_lo.addWidget(self.btn_pause)
+            bottom_lo.addSpacing(8)
+            bottom_lo.addWidget(self.btn_stop)
             bottom_lo.addStretch()
             outer_layout.addWidget(bottom_bar)
 
@@ -962,10 +985,16 @@ def gui_main():
             QMetaObject.invokeMethod(self.worker, "run", Qt.QueuedConnection)
 
             self.btn_start.setEnabled(False)
+            self.btn_start.setText("▶  Start")
             self.btn_pause.setEnabled(True)
+            self.btn_stop.setEnabled(True)
             self.progress.setVisible(True)
+            self.progress_label.setVisible(True)
             self.progress.setValue(0)
             self.progress.setMaximum(100)
+            self.progress_label.setText(
+                f"Campaign Progress: 0 / {len(recipients)} emails sent (Day 1 of {cfg['warmup_days']})"
+            )
             self.status.showMessage("Running…")
             QApplication.processEvents()
 
@@ -980,27 +1009,46 @@ def gui_main():
                 self._on_worker_finished()
                 return
             self._log_msg("Pausing… (will finish current email, then stop)")
+            self.btn_start.setEnabled(True)
+            self.btn_start.setText("▶  Resume")
             self.btn_pause.setEnabled(False)
+
+        def _stop_warmup(self):
+            """Hard stop — immediately stops the worker and resets UI."""
+            if self.worker:
+                self.worker.stop()
+            self._log_msg("Stopped by user. State saved.")
+            self.btn_start.setEnabled(True)
+            self.btn_start.setText("▶  Start")
+            self.btn_pause.setEnabled(False)
+            self.btn_stop.setEnabled(False)
+            self.progress.setVisible(False)
+            self.progress_label.setVisible(False)
+            self.status.showMessage("Stopped")
 
         def _on_worker_finished(self):
             self.btn_start.setEnabled(True)
+            self.btn_start.setText("▶  Start")
             self.btn_pause.setEnabled(False)
+            self.btn_stop.setEnabled(False)
             self.progress.setVisible(False)
+            self.progress_label.setVisible(False)
             self.status.showMessage("Done")
             self._log_msg("Warm-up complete. Click Start again to run another day.")
 
         def _on_worker_error(self, msg):
             self._log_msg(f"ERROR: {msg}")
 
-        def _on_day_done(self, day, total_sent):
-            self._log_msg(f"Day {day} complete — total sent: {total_sent}")
+        def _on_day_done(self, day, sent_today, total_sent, total_recipients):
+            msg = f"Day {day} complete - sent {sent_today} email(s) today (cumulative: {total_sent}/{total_recipients})"
+            self._log_msg(msg)
 
         @Slot(str)
         def _log_msg(self, msg):
-            self.log_output.appendPlainText(msg)
-            cursor = self.log_output.textCursor()
-            cursor.movePosition(QTextCursor.End)
-            self.log_output.setTextCursor(cursor)
+            ts = datetime.now().strftime("%H:%M:%S")
+            self.log_output.appendPlainText(f"[{ts}] {msg}")
+            scrollbar = self.log_output.verticalScrollBar()
+            scrollbar.setValue(scrollbar.maximum())
 
         @Slot(int, int)
         def _update_progress(self, current, total):
@@ -1235,7 +1283,7 @@ def gui_main():
         QSpinBox {
             background-color: #2b2b2b; color: #f0f0f0;
             border: 1px solid #555; border-radius: 4px;
-            padding: 2px 4px; font-size: 13px;
+            padding: 4px; font-size: 13px;
         }
         QSpinBox:focus {
             border-color: #4a9eff;
@@ -1243,11 +1291,19 @@ def gui_main():
         QSpinBox::up-button, QSpinBox::down-button {
             background-color: #3c3f41;
             border: 1px solid #555;
-            border-radius: 2px;
-            width: 18px;
+            width: 16px;
         }
-        QSpinBox::up-arrow, QSpinBox::down-arrow {
-            width: 8px; height: 8px;
+        QSpinBox::up-arrow {
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-bottom: 6px solid #cccccc;
+            width: 0; height: 0;
+        }
+        QSpinBox::down-arrow {
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 6px solid #cccccc;
+            width: 0; height: 0;
         }
         QSpinBox::up-arrow:hover, QSpinBox::down-arrow:hover {
             background: #555;
