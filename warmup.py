@@ -319,11 +319,11 @@ def gui_main():
             super().__init__()
             self.html_editor_content = ""  # holds editor tab HTML
 
-            self.setWindowTitle(f"Mail Warmer v{__version__}")
-            self.setMinimumSize(640, 700)
+            self.setWindowTitle("Mail Warmer")
+            self.setMinimumSize(660, 720)
 
-            self._build_ui()
             self._build_menu()
+            self._build_ui()
 
             # Create worker + thread once and reuse them
             self.worker_thread = QThread(self)
@@ -361,17 +361,38 @@ def gui_main():
         # ── UI ────────────────────────────────────────────────────────
 
         def _build_ui(self):
-            # Main scroll area so the UI degrades gracefully on small windows
+            central = QWidget()
+            outer_layout = QVBoxLayout(central)
+            outer_layout.setSpacing(0)
+            outer_layout.setContentsMargins(0, 0, 0, 0)
+
+            # ─ Toolbar (Save / Load) ─────────────────────────────────────────
+            toolbar = QWidget()
+            toolbar.setMaximumHeight(40)
+            toolbar_lo = QHBoxLayout(toolbar)
+            toolbar_lo.setContentsMargins(8, 2, 8, 2)
+
+            btn_save = QPushButton("Save Config")
+            btn_save.setFixedHeight(28)
+            btn_save.clicked.connect(self._save_config)
+            btn_load_env = QPushButton("Load from .env")
+            btn_load_env.setFixedHeight(28)
+            btn_load_env.clicked.connect(self._load_config_into_ui)
+            toolbar_lo.addWidget(btn_save)
+            toolbar_lo.addSpacing(8)
+            toolbar_lo.addWidget(btn_load_env)
+            toolbar_lo.addStretch()
+            outer_layout.addWidget(toolbar)
+
+            # ─ Scroll area ───────────────────────────────────────────────────
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setFrameShape(QScrollArea.NoFrame)
-            self.setCentralWidget(scroll)
 
-            central = QWidget()
-            scroll.setWidget(central)
-            layout = QVBoxLayout(central)
-            layout.setSpacing(12)
-            layout.setContentsMargins(8, 8, 8, 8)
+            scroll_content = QWidget()
+            scroll_layout = QVBoxLayout(scroll_content)
+            scroll_layout.setSpacing(12)
+            scroll_layout.setContentsMargins(8, 8, 8, 8)
 
             # ─ SMTP ─────────────────────────────────────────────────────────
             smtp_group = QGroupBox("SMTP Configuration")
@@ -379,11 +400,18 @@ def gui_main():
             smtp_grid.setSpacing(8)
             smtp_grid.setContentsMargins(12, 12, 12, 12)
 
-            smtp_grid.addWidget(QLabel("Host:"), 0, 0)
+            lbl_host = QLabel("Host:")
+            lbl_host.setMinimumWidth(90)
+            lbl_host.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            smtp_grid.addWidget(lbl_host, 0, 0)
             self.smtp_host = QLineEdit()
             self.smtp_host.setPlaceholderText("smtp.example.com")
             smtp_grid.addWidget(self.smtp_host, 0, 1)
-            smtp_grid.addWidget(QLabel("Port:"), 0, 2)
+
+            lbl_port = QLabel("Port:")
+            lbl_port.setMinimumWidth(90)
+            lbl_port.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            smtp_grid.addWidget(lbl_port, 0, 2)
             self.smtp_port = QSpinBox()
             self.smtp_port.setRange(1, 65535)
             self.smtp_port.setValue(25)
@@ -391,12 +419,18 @@ def gui_main():
             self.smtp_port.setFixedHeight(32)
             smtp_grid.addWidget(self.smtp_port, 0, 3)
 
-            smtp_grid.addWidget(QLabel("Username:"), 1, 0)
+            lbl_user = QLabel("Username:")
+            lbl_user.setMinimumWidth(90)
+            lbl_user.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            smtp_grid.addWidget(lbl_user, 1, 0)
             self.smtp_user = QLineEdit()
             self.smtp_user.setPlaceholderText("user@example.com")
             smtp_grid.addWidget(self.smtp_user, 1, 1, 1, 3)
 
-            smtp_grid.addWidget(QLabel("Password:"), 2, 0)
+            lbl_pass = QLabel("Password:")
+            lbl_pass.setMinimumWidth(90)
+            lbl_pass.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            smtp_grid.addWidget(lbl_pass, 2, 0)
             self.smtp_pass = QLineEdit()
             self.smtp_pass.setEchoMode(QLineEdit.Password)
             self.smtp_pass.setPlaceholderText("Enter SMTP password")
@@ -407,7 +441,7 @@ def gui_main():
 
             smtp_grid.setColumnStretch(1, 1)
             smtp_grid.setColumnStretch(3, 0)
-            layout.addWidget(smtp_group)
+            scroll_layout.addWidget(smtp_group)
 
             # ─ Sender & Email ───────────────────────────────────────────────
             sender_group = QGroupBox("Sender & Email")
@@ -415,40 +449,32 @@ def gui_main():
             sender_grid.setSpacing(8)
             sender_grid.setContentsMargins(12, 12, 12, 12)
 
-            sender_grid.addWidget(QLabel("From Name:"), 0, 0)
+            lbl_from_name = QLabel("From Name:")
+            lbl_from_name.setMinimumWidth(90)
+            lbl_from_name.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            sender_grid.addWidget(lbl_from_name, 0, 0)
             self.from_name = QLineEdit()
             self.from_name.setPlaceholderText("Your Company")
             sender_grid.addWidget(self.from_name, 0, 1, 1, 3)
 
-            sender_grid.addWidget(QLabel("From Email:"), 1, 0)
+            lbl_from_email = QLabel("From Email:")
+            lbl_from_email.setMinimumWidth(90)
+            lbl_from_email.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            sender_grid.addWidget(lbl_from_email, 1, 0)
             self.from_email = QLineEdit()
             self.from_email.setPlaceholderText("info@example.com")
             sender_grid.addWidget(self.from_email, 1, 1, 1, 3)
 
-            sender_grid.addWidget(QLabel("Subject:"), 2, 0)
+            lbl_subject = QLabel("Subject:")
+            lbl_subject.setMinimumWidth(90)
+            lbl_subject.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            sender_grid.addWidget(lbl_subject, 2, 0)
             self.email_subject = QLineEdit()
             self.email_subject.setPlaceholderText("Email subject line")
             sender_grid.addWidget(self.email_subject, 2, 1, 1, 3)
 
-            # Config buttons row — now labeled "Config"
-            btn_widget = QWidget()
-            btn_lo = QHBoxLayout(btn_widget)
-            btn_lo.setContentsMargins(0, 4, 0, 0)
-            btn_save = QPushButton("Save Config")
-            btn_save.setFixedHeight(32)
-            btn_save.clicked.connect(self._save_config)
-            btn_load_env = QPushButton("Load from .env")
-            btn_load_env.setFixedHeight(32)
-            btn_load_env.clicked.connect(self._load_config_into_ui)
-            btn_lo.addWidget(btn_save)
-            btn_lo.addSpacing(8)
-            btn_lo.addWidget(btn_load_env)
-            btn_lo.addStretch()
-            sender_grid.addWidget(QLabel("Config:"), 3, 0, Qt.AlignTop)
-            sender_grid.addWidget(btn_widget, 3, 1, 1, 3)
-
             sender_grid.setColumnStretch(1, 1)
-            layout.addWidget(sender_group)
+            scroll_layout.addWidget(sender_group)
 
             # ─ Recipients & Email Body ───────────────────────────────────────
             data_body_group = QGroupBox("Recipients & Email Body")
@@ -456,9 +482,12 @@ def gui_main():
             data_body_layout.setSpacing(8)
             data_body_layout.setContentsMargins(12, 12, 12, 12)
 
-            # Recipients file row — fixed 32px height, AlignVCenter
+            # Recipients file row
             data_row = QHBoxLayout()
-            data_row.addWidget(QLabel("Recipients:"))
+            lbl_recipients = QLabel("Recipients:")
+            lbl_recipients.setMinimumWidth(90)
+            lbl_recipients.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            data_row.addWidget(lbl_recipients)
             self.data_path = QLineEdit()
             self.data_path.setFixedHeight(32)
             self.data_path.setPlaceholderText(
@@ -473,13 +502,20 @@ def gui_main():
             data_row.addWidget(btn_data)
             data_body_layout.addLayout(data_row)
 
+            # Email Body Source label
+            lbl_body_source = QLabel("Email Body Source:")
+            lbl_body_source.setMinimumWidth(90)
+            lbl_body_source.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            data_body_layout.addWidget(lbl_body_source)
+
             # Email Body tabs
             body_tabs = QTabWidget()
             self.body_tabs = body_tabs
 
-            # File tab
+            # File tab — path + Browse + Load into Editor on one row
             file_tab = QWidget()
             file_lo = QHBoxLayout(file_tab)
+            file_lo.setContentsMargins(4, 4, 4, 4)
             self.html_path = QLineEdit()
             self.html_path.setFixedHeight(32)
             self.html_path.setPlaceholderText("Path to .html file…")
@@ -494,7 +530,7 @@ def gui_main():
             btn_load_body.setFixedHeight(32)
             btn_load_body.clicked.connect(self._load_html_file_to_editor)
             file_lo.addWidget(btn_load_body)
-            body_tabs.addTab(file_tab, "📁 File")
+            body_tabs.addTab(file_tab, "📂 Load from File")
 
             # Editor tab
             editor_tab = QWidget()
@@ -506,12 +542,12 @@ def gui_main():
                 "<!DOCTYPE html>\n<html>\n<body>\n  <h1>Hello!</h1>\n</body>\n</html>"
             )
             editor_lo.addWidget(self.html_editor)
-            body_tabs.addTab(editor_tab, "✏️ Editor")
+            body_tabs.addTab(editor_tab, "✏️ Write HTML")
 
             body_tabs.currentChanged.connect(self._on_body_tab_changed)
             body_tabs.setMinimumHeight(200)
             data_body_layout.addWidget(body_tabs, stretch=1)
-            layout.addWidget(data_body_group, stretch=2)
+            scroll_layout.addWidget(data_body_group, stretch=2)
 
             # ─ Schedule ──────────────────────────────────────────────────────
             sched_group = QGroupBox("Schedule Controls")
@@ -519,38 +555,63 @@ def gui_main():
             sched_layout.setSpacing(8)
             sched_layout.setContentsMargins(12, 12, 12, 12)
 
-            # Row 0: Warmup days + delays — each group separated by stretch
+            # Row 0: Warmup days + delays — each pair in its own column
             sched_row0 = QHBoxLayout()
-            sched_row0.addWidget(QLabel("Warmup days:"))
+
+            # Column 1: Warmup days
+            col1 = QVBoxLayout()
+            col1.setSpacing(4)
+            lbl_wd = QLabel("Warmup days:")
+            lbl_wd.setMinimumWidth(90)
+            lbl_wd.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            col1.addWidget(lbl_wd)
             self.warmup_days = QSpinBox()
             self.warmup_days.setRange(1, 365)
             self.warmup_days.setValue(14)
-            self.warmup_days.setFixedWidth(70)
+            self.warmup_days.setFixedWidth(90)
             self.warmup_days.setFixedHeight(32)
-            sched_row0.addWidget(self.warmup_days)
+            self.warmup_days.setToolTip(
+                "Total number of days to run the warmup sequence"
+            )
+            col1.addWidget(self.warmup_days)
+            sched_row0.addLayout(col1)
+            sched_row0.addSpacing(16)
 
-            sched_row0.addStretch(1)
-
-            sched_row0.addWidget(QLabel("Delay/email:"))
+            # Column 2: Delay/email
+            col2 = QVBoxLayout()
+            col2.setSpacing(4)
+            lbl_de = QLabel("Delay/email:")
+            lbl_de.setMinimumWidth(90)
+            lbl_de.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            col2.addWidget(lbl_de)
             self.delay_email = QSpinBox()
             self.delay_email.setRange(0, 3600)
             self.delay_email.setValue(10)
-            self.delay_email.setFixedWidth(70)
+            self.delay_email.setFixedWidth(90)
             self.delay_email.setFixedHeight(32)
-            sched_row0.addWidget(self.delay_email)
-            sched_row0.addWidget(QLabel("s"))
+            self.delay_email.setToolTip(
+                "Seconds to wait between individual email sends"
+            )
+            col2.addWidget(self.delay_email)
+            sched_row0.addLayout(col2)
+            sched_row0.addSpacing(16)
 
-            sched_row0.addStretch(1)
-
-            sched_row0.addWidget(QLabel("Delay/day:"))
+            # Column 3: Delay/day
+            col3 = QVBoxLayout()
+            col3.setSpacing(4)
+            lbl_dd = QLabel("Delay/day:")
+            lbl_dd.setMinimumWidth(90)
+            lbl_dd.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            col3.addWidget(lbl_dd)
             self.delay_day = QSpinBox()
             self.delay_day.setRange(0, 86400 * 7)
             self.delay_day.setValue(86400)
-            self.delay_day.setFixedWidth(80)
+            self.delay_day.setFixedWidth(100)
             self.delay_day.setFixedHeight(32)
-            sched_row0.addWidget(self.delay_day)
-            sched_row0.addWidget(QLabel("s"))
-            sched_row0.addStretch(2)
+            self.delay_day.setToolTip("Seconds to wait between day runs in auto mode")
+            col3.addWidget(self.delay_day)
+            sched_row0.addLayout(col3)
+            sched_row0.addStretch()
             sched_layout.addLayout(sched_row0)
 
             # Row 1: Mode selection
@@ -570,42 +631,68 @@ def gui_main():
             mode_row.addStretch()
             sched_layout.addLayout(mode_row)
 
-            # Row 2: Buttons
-            btn_row = QHBoxLayout()
+            # Mode description
+            mode_desc = QLabel(
+                "Auto: sends on every day in the schedule. "
+                "Specific: send only on the chosen day number."
+            )
+            mode_desc.setWordWrap(True)
+            mode_desc.setStyleSheet("font-size: 11px; color: #aaa;")
+            sched_layout.addWidget(mode_desc)
+
+            scroll_layout.addWidget(sched_group)
+
+            # Finish scroll area
+            scroll.setWidget(scroll_content)
+            outer_layout.addWidget(scroll, stretch=1)
+
+            # ─ Log (outside scroll area, above bottom bar) ──────────────────
+            log_label = QLabel("Activity Log")
+            log_label.setStyleSheet(
+                "font-weight: bold; font-size: 12px; margin-top: 4px;"
+            )
+            outer_layout.addWidget(log_label)
+            self.log_output = QPlainTextEdit()
+            self.log_output.setReadOnly(True)
+            self.log_output.setMaximumBlockCount(5000)
+            self.log_output.setMinimumHeight(80)
+            self.log_output.setMaximumHeight(150)
+            outer_layout.addWidget(self.log_output)
+
+            # ─ Progress ─
+            self.progress = QProgressBar()
+            self.progress.setVisible(False)
+            self.progress.setFixedHeight(24)
+            outer_layout.addWidget(self.progress)
+
+            # ─ Fixed bottom bar with Start / Pause ───────────────────────────
+            bottom_bar = QWidget()
+            bottom_bar.setFixedHeight(56)
+            bottom_bar.setStyleSheet(
+                "background-color: #2b2b2b; border-top: 1px solid #555;"
+            )
+            bottom_lo = QHBoxLayout(bottom_bar)
+            bottom_lo.setContentsMargins(12, 6, 12, 6)
+
             self.btn_start = QPushButton("▶  Start")
             self.btn_start.setObjectName("btnStart")
             self.btn_start.setMinimumSize(140, 40)
             self.btn_start.clicked.connect(self._start_warmup)
+
             self.btn_pause = QPushButton("⏸  Pause")
             self.btn_pause.setObjectName("btnPause")
             self.btn_pause.setMinimumSize(140, 40)
             self.btn_pause.setEnabled(False)
             self.btn_pause.clicked.connect(self._pause_warmup)
-            btn_row.addWidget(self.btn_start)
-            btn_row.addSpacing(12)
-            btn_row.addWidget(self.btn_pause)
-            btn_row.addStretch()
-            sched_layout.addLayout(btn_row)
 
-            layout.addWidget(sched_group)
+            bottom_lo.addStretch()
+            bottom_lo.addWidget(self.btn_start)
+            bottom_lo.addSpacing(12)
+            bottom_lo.addWidget(self.btn_pause)
+            bottom_lo.addStretch()
+            outer_layout.addWidget(bottom_bar)
 
-            # ─ Log ───────────────────────────────────────────────────────────
-            log_label = QLabel("Activity Log")
-            log_label.setStyleSheet(
-                "font-weight: bold; font-size: 12px; margin-top: 4px;"
-            )
-            layout.addWidget(log_label)
-            self.log_output = QPlainTextEdit()
-            self.log_output.setReadOnly(True)
-            self.log_output.setMaximumBlockCount(5000)
-            self.log_output.setMinimumHeight(80)
-            layout.addWidget(self.log_output, stretch=1)
-
-            # ─ Progress & Status ─
-            self.progress = QProgressBar()
-            self.progress.setVisible(False)
-            self.progress.setFixedHeight(24)
-            layout.addWidget(self.progress)
+            self.setCentralWidget(central)
 
             self.status = QStatusBar()
             self.setStatusBar(self.status)
@@ -788,6 +875,11 @@ def gui_main():
         # ── Start / Pause ──────────────────────────────────────────────
 
         def _build_cfg_from_ui(self):
+            state_dir = os.environ.get(
+                "XDG_CONFIG_HOME", os.path.join(os.path.expanduser("~"), ".config")
+            )
+            state_dir = os.path.join(state_dir, "mailwarmer")
+            os.makedirs(state_dir, exist_ok=True)
             return {
                 "smtp_host": self.smtp_host.text(),
                 "smtp_port": self.smtp_port.value(),
@@ -800,7 +892,7 @@ def gui_main():
                 "warmup_days": self.warmup_days.value(),
                 "delay_emails": self.delay_email.value(),
                 "delay_days": self.delay_day.value(),
-                "state_file": "warmup_state.json",
+                "state_file": os.path.join(state_dir, "warmup_state.json"),
             }
 
         def _start_warmup(self):
@@ -857,6 +949,10 @@ def gui_main():
                 f"Starting warm-up — {len(recipients)} recipients, "
                 f"{len(schedule)} days, sent so far: {state['sent_index']}"
             )
+            self._log_msg(
+                f"State file: {cfg['state_file']}, "
+                f"last_day={state['last_day']}, sent_index={state['sent_index']}"
+            )
 
             # Auto-save config so file paths persist for next session
             self._save_config(silent=True)
@@ -873,8 +969,15 @@ def gui_main():
             QApplication.processEvents()
 
         def _pause_warmup(self):
-            if self.worker:
-                self.worker.stop()
+            try:
+                if self.worker and self.worker_thread.isRunning():
+                    self.worker.stop()
+                else:
+                    self._on_worker_finished()
+                    return
+            except Exception:
+                self._on_worker_finished()
+                return
             self._log_msg("Pausing… (will finish current email, then stop)")
             self.btn_pause.setEnabled(False)
 
@@ -1024,7 +1127,7 @@ def gui_main():
         }
         QGroupBox {
             color: #f0f0f0; font-weight: bold; font-size: 13px;
-            border: 1px solid #555; border-radius: 6px;
+            border: 1px solid #606060; border-radius: 6px;
             margin-top: 8px; padding: 8px;
         }
         QGroupBox::title {
@@ -1052,10 +1155,13 @@ def gui_main():
             background-color: #3c3f41;
             border: 1px solid #555;
             border-radius: 2px;
-            width: 16px;
+            width: 18px;
         }
         QSpinBox::up-arrow, QSpinBox::down-arrow {
             width: 8px; height: 8px;
+        }
+        QSpinBox::up-arrow:hover, QSpinBox::down-arrow:hover {
+            background: #555;
         }
         QPushButton {
             background-color: #3c3f41; color: #f0f0f0;
@@ -1173,6 +1279,9 @@ def gui_main():
 
     window = MainWindow()
     window.show()
+    window.move(
+        QApplication.primaryScreen().geometry().center() - window.rect().center()
+    )
     sys.exit(app.exec())
 
 
