@@ -206,7 +206,10 @@ def send_batch(recipients, count, state, cfg, html_body, log, progress_callback=
                     progress_callback(idx + 1, total_in_batch)
 
     except Exception as e:
-        log.error("SMTP connection error: %s", e)
+        try:
+            log.error("SMTP connection error on %s: %s", email, e)
+        except NameError:
+            log.error("SMTP connection error: %s", e)
         return 0
 
     return sent

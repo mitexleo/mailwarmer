@@ -208,9 +208,7 @@ def gui_main():
 
             gui_handler = QtLogHandler(LogSignal())
             gui_handler.signal.message.connect(self._log)
-            gui_handler.setFormatter(
-                logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-            )
+            gui_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
             logger.addHandler(gui_handler)
 
             file_handler = logging.FileHandler("warmup.log")
@@ -269,7 +267,8 @@ def gui_main():
                 logger,
                 progress_cb,
             )
-            self.state["last_day"] = day
+            if sent > 0:
+                self.state["last_day"] = day
             save_state(self.cfg["state_file"], self.state)
             logger.info(
                 "=== Day %d done: sent %d, total sent %d ===",
